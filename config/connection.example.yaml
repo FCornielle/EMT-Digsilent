@@ -1,0 +1,9 @@
+# Reference only. Study YAML files contain their own connection section.
+# Never commit a password; use PFEMT_PASSWORD in the environment.
+connection:
+  mode: external
+  home:
+  username:
+  password:
+  command_line:
+

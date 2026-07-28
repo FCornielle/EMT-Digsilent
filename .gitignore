@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+*.egg-info/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# PowerFactory generated/cache files
+*.pfd
+*.dz
+*.bak
+
+# Study artefacts (regenerable)
+artifacts/**
+!artifacts/.gitkeep
+studies/**/outputs/**
+!studies/**/outputs/.gitkeep
+
+# Secrets and local machine settings
+.env
+config/local.yaml

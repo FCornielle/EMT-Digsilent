@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this repository, please cite it using this metadata."
+title: "Industrial EMT Studies with DIgSILENT PowerFactory and Python"
+type: software
+authors:
+  - family-names: "Cornielle"
+    given-names: "Fernando"
+version: 0.1.0
+date-released: 2026-07-28
+license: MIT
+keywords:
+  - EMT
+  - PowerFactory
+  - power systems
+  - transient studies
+  - Python
+
