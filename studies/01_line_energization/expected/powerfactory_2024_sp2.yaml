@@ -1,0 +1,25 @@
+baseline:
+  generated_utc: "2026-07-28T19:38:17.724270+00:00"
+  powerfactory_version: "2024 SP2 (24.0.2)"
+  powerfactory_user: "VM-PF"
+  python_version: "3.9.0"
+  emt_licence_available: true
+  scenario_count: 12
+  configuration_sha256: "C4EB9FA329A055FA9516B357263E2C0AB02B8D203F2F177F1D408BEF0A8A9CF3"
+  sweep_summary_sha256: "158D4067E2A55B09269253A87C94B76DD33F19C46AF84B99CBB48C1434A5B7FC"
+
+results:
+  worst_voltage_peak_pu: 2.257009877
+  worst_voltage_peak_kv_phase_ground: 423.853395
+  worst_voltage_angles_deg: [30, 90, 150, 210, 270, 330]
+  maximum_closing_current_ka_peak: 0.865571
+  maximum_current_angles_deg: [0, 60, 120, 180, 240, 300]
+
+tolerances:
+  voltage_peak_relative: 0.005
+  current_peak_relative: 0.010
+
+notes:
+  - "Regression baseline for the example model, not an insulation-design acceptance limit."
+  - "Re-baseline only after reviewing parameter, solver or PowerFactory-version changes."
+

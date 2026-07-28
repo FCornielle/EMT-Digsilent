@@ -1,0 +1,14 @@
+section,parameter,value,unit,status,engineering_basis
+system,nominal_voltage,230,kV,example,Transmission-class benchmark
+system,frequency,50,Hz,example,Configurable for 50/60 Hz systems
+source,short_circuit_power,10000,MVA,example,Strong transmission grid equivalent
+source,R_over_X,0.10,pu_ratio,example,Thevenin positive-sequence ratio
+line,length,150,km,example,Long-line travelling-wave case
+line,R1,0.028,ohm_per_km,example,Representative overhead-line sequence input
+line,X1,0.310,ohm_per_km,example,Representative overhead-line sequence input
+line,B1,3.80,uS_per_km,example,Representative overhead-line sequence input
+line,R0,0.230,ohm_per_km,example,Representative overhead-line sequence input
+line,X0,0.980,ohm_per_km,example,Representative overhead-line sequence input
+line,B0,2.10,uS_per_km,example,Representative overhead-line sequence input
+simulation,time_step,10,us,screening,Must be justified against highest relevant frequency
+

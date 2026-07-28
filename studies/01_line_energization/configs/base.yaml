@@ -1,0 +1,112 @@
+study:
+  id: line_energization_230kv
+  title: Energización EMT de línea aérea de 230 kV
+  owner: Fernando Cornielle
+  status: engineering_example
+
+connection:
+  # "external" uses GetApplicationExt from a normal terminal.
+  # The scripts named *_inside_powerfactory.py override this to "internal".
+  mode: external
+  home:
+  username:
+  password:
+  command_line:
+
+powerfactory:
+  project: PFEMT_01_Line_Energization_230kV
+  grid: GRID_230KV
+  study_case: EMT - Point on Wave
+
+objects:
+  source: GRID_EQUIVALENT
+  sending_bus: BUS_SENDING_230
+  line_bus: BUS_LINE_SIDE_230
+  receiving_bus: BUS_RECEIVING_230
+  breaker: CB_LINE_230
+  line: LINE_230KV_150KM
+
+network:
+  nominal_voltage_kv: 230.0
+  frequency_hz: 50.0
+  source:
+    voltage_pu: 1.0
+    short_circuit_mva: 10000.0
+    r_over_x: 0.10
+    x0_over_x1: 1.0
+    r0_over_x0: 0.10
+  line:
+    type_name: TYP_OHL_230KV_EMT
+    model_basis: sequence_parameters
+    length_km: 150.0
+    rated_current_ka: 1.20
+    frequency_dependent_model: 1
+    main_transient_frequency_hz: 1000.0
+    fit_frequency_min_hz: 10.0
+    fit_frequency_max_hz: 10000.0
+    sequence_parameters:
+      r1_ohm_per_km: 0.028
+      x1_ohm_per_km: 0.310
+      b1_us_per_km: 3.80
+      r0_ohm_per_km: 0.230
+      x0_ohm_per_km: 0.980
+      b0_us_per_km: 2.10
+
+simulation:
+  mode_code: ins
+  start_s: -0.020
+  stop_s: 0.120
+  step_s: 0.000010
+  output_step_s: 0.000010
+
+events:
+  closing:
+    name: CLOSE_CB_LINE
+    action: 1
+
+results:
+  channels:
+    - object: BUS_RECEIVING_230.ElmTerm
+      variable: m:U:A
+    - object: BUS_RECEIVING_230.ElmTerm
+      variable: m:U:B
+    - object: BUS_RECEIVING_230.ElmTerm
+      variable: m:U:C
+    - object: LINE_230KV_150KM.ElmLne
+      variable: m:I:bus1:A
+    - object: LINE_230KV_150KM.ElmLne
+      variable: m:I:bus1:B
+    - object: LINE_230KV_150KM.ElmLne
+      variable: m:I:bus1:C
+
+sweep:
+  base_switching_time_s: 0.020
+  angles_deg: [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330]
+
+monte_carlo:
+  enabled: false
+  samples: 200
+  seed: 20260728
+  base_switching_time_s: 0.020
+  source_voltage_pu:
+    min: 0.95
+    max: 1.05
+  line_length_km:
+    min: 140.0
+    max: 160.0
+
+analysis:
+  decimal: "."
+  # Fragments matched case-insensitively in the ComRes CSV header.
+  # Adjust only if a localized PowerFactory installation exports different labels.
+  column_map:
+    time_s: time
+    v_recv_a_kv: Phase Voltage A in kV
+    v_recv_b_kv: Phase Voltage B in kV
+    v_recv_c_kv: Phase Voltage C in kV
+    i_send_a_ka: Phase Current A/Terminal i in kA
+    i_send_b_ka: Phase Current B/Terminal i in kA
+    i_send_c_ka: Phase Current C/Terminal i in kA
+
+outputs:
+  directory: ../outputs
