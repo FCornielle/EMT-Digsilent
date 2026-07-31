@@ -123,7 +123,10 @@ a SHA-256 input signature to `ElmCabsys.desc`; unchanged reruns reuse those
 parameters, while a changed cable input forces a new fit. After the build, select
 [`scripts/export_diagram_inside_powerfactory.py`](scripts/export_diagram_inside_powerfactory.py)
 from a second `ComPython` object to export the visible native diagram to
-`outputs/figures/powerfactory_single_line.png`.
+`outputs/figures/powerfactory_single_line.png`. The exporter opens the linked
+`IntGrfnet`, resolves its live `SetDeskpage`, and passes that tab explicitly to
+PowerFactory 2024's `ComWr.ExportGraphicTab()` method. This avoids exporting an
+unrelated plot or diagram that happened to be active previously.
 
 ### PowerFactory 2024 integration evidence
 
@@ -383,4 +386,5 @@ not substitute for reviewing the executed PowerFactory model.
 - [DIgSILENT: isolated, single-point, both-end, and cross-bonded screens](https://www.digsilent.de/en/faq-reader-powerfactory/how-do-you-model-the-bonding-of-cables-isolated-single-and-double-bonded.html)
 - [DIgSILENT: detailed cable/sheath voltage and current profiles with Python](https://www.digsilent.de/en/faq-reader-powerfactory/do-you-have-a-python-script-to-calculate-the-voltage-and-current-in-a-line-as-function-of-distance.html)
 - [DIgSILENT: validate cable EMT models with frequency sweep and EMT/FFT](https://www.digsilent.de/en/faq-reader-powerfactory/how-can-you-validate-cable-and-overhead-line-models-for-emt-simulations/category/dynamic-simulation.html)
+- [DIgSILENT: export plots and network diagrams with Python](https://www.digsilent.de/index.php/en/faq-reader-powerfactory/how-can-i-automatically-export-all-plots-available-in-a-project.html)
 - [ABB: XLPE Submarine Cable Systems, Table 37](https://resources.news.e.abb.com/attachments/published/13326/en-US/55ED60680654/XLPE-Submarine-Cable-Systems-2GM5007-.pdf)

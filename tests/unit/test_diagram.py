@@ -1,3 +1,4 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 from pfemt.diagram import (
@@ -7,6 +8,7 @@ from pfemt.diagram import (
     LINE_ENERGIZATION_LAYOUT,
     _linked_diagrams,
     _padded_points,
+    export_powerfactory_diagram,
 )
 
 
@@ -85,3 +87,41 @@ def test_existing_autolayout_diagram_is_detected_by_linked_objects() -> None:
     complete = _Diagram(list(LINE_ENERGIZATION_LAYOUT))
     incomplete = _Diagram(list(LINE_ENERGIZATION_LAYOUT)[:-1])
     assert _linked_diagrams(_Folder([incomplete, complete])) == [complete]
+
+
+def test_export_uses_powerfactory_graphic_tab_api(tmp_path: Path) -> None:
+    output = tmp_path / "native_diagram.png"
+    diagram = SimpleNamespace(loc_name=CABLE_DIAGRAM_NAME)
+    page = SimpleNamespace(loc_name=CABLE_DIAGRAM_NAME)
+
+    class _Board:
+        def __init__(self) -> None:
+            self.shown = None
+
+        def GetContents(self, pattern: str) -> list[object]:
+            assert pattern == "*.SetDeskpage"
+            return [page]
+
+        def Show(self, selected: object) -> int:
+            self.shown = selected
+            return 0
+
+    class _Writer:
+        def __init__(self) -> None:
+            self.exported = None
+
+        def ExportGraphicTab(self, selected: object, filename: str) -> int:
+            self.exported = (selected, filename)
+            Path(filename).write_bytes(b"powerfactory-png")
+            return 0
+
+    board = _Board()
+    writer = _Writer()
+    app = SimpleNamespace(
+        GetGraphicsBoard=lambda: board,
+        GetFromStudyCase=lambda class_name: writer if class_name == "ComWr" else None,
+    )
+
+    assert export_powerfactory_diagram(app, diagram, output) == output.resolve()
+    assert board.shown is page
+    assert writer.exported == (page, str(output.resolve()))

@@ -267,11 +267,23 @@ def export_powerfactory_diagram(app: Any, diagram: Any, destination: Path) -> Pa
     command = app.GetFromStudyCase("ComWr")
     if command is None:
         raise PowerFactoryExecutionError("The active Study Case has no Save File command")
-    set_attribute(command, "iopt_rd", "png")
-    set_attribute(command, "iopt_savas", 0)
-    set_attribute(command, "f", str(output))
-    set_attribute(command, "drawPageFrame", 1, required=False)
-    execute(command, "PowerFactory diagram export")
+    export_tab = getattr(command, "ExportGraphicTab", None)
+    if callable(export_tab):
+        export_code = export_tab(page, str(output))
+        if export_code not in (None, 0):
+            raise PowerFactoryExecutionError(
+                "PowerFactory could not export diagram {!r} to {}".format(
+                    diagram.loc_name, output
+                )
+            )
+    else:
+        # Compatibility path for PowerFactory releases that pre-date the
+        # explicit ComWr.ExportGraphicTab API.
+        set_attribute(command, "iopt_rd", "png")
+        set_attribute(command, "iopt_savas", 0)
+        set_attribute(command, "f", str(output))
+        set_attribute(command, "drawPageFrame", 1, required=False)
+        execute(command, "PowerFactory diagram export")
     if not output.is_file() or output.stat().st_size == 0:
         raise PowerFactoryExecutionError(
             "PowerFactory completed the diagram export but did not create {}".format(output)
