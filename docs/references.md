@@ -17,11 +17,17 @@ the installed PowerFactory version when a web page and local manual differ.
   - `ElmLne.AreDistParamsPossible()`.
   - `ElmLne.FitParams()`; `i_model=0` constant and `i_model=1`
     frequency-dependent parameters.
+  - `ElmCabsys.Update()` and `ElmCabsys.FitParams()`.
   - `SetDesktop.Show()` and `WriteWMF()`.
   - `ComWr` graphic export to PNG/SVG/PDF and other formats.
 - `C:\Program Files\DIgSILENT\PowerFactory 2024\Help\TechRef\TechRef_CableSystem.pdf`
-  - Installed cable-system technical reference to be used when the Study 02
-    `TypCab`/`TypCabsys` builder attributes are implemented and reviewed.
+  - `TypCab` conductor, insulation, sheath, and material-vector definitions.
+  - `TypCabsys` phase coordinates, burial, bonding, and earth-return inputs.
+  - Frequency-dependent phase-domain ULM/FDCM models and vector fitting.
+- `C:\Program Files\DIgSILENT\PowerFactory 2024\localisation\en-GB\tutorials\Cable\Tutorial_CableParameters.pdf`
+  - Vendor-to-PowerFactory geometry conversion and capacitance calibration.
+- `C:\Program Files\DIgSILENT\PowerFactory 2024\localisation\en-GB\tutorials\Cable\Tutorial_CableBonding.pdf`
+  - Explicit core/sheath `ElmLne` circuits coupled through `ElmCabsys`.
 
 ## Official DIgSILENT knowledge base
 
@@ -43,6 +49,12 @@ the installed PowerFactory version when a web page and local manual differ.
 - [Detailed cable systems using geometric data and explicit sheaths](https://www.digsilent.de/en/faq-reader-powerfactory/how-do-you-model-cable-systems-in-detail-for-the-harmonic-analysis.html)
 - [Cable screen bonding alternatives](https://www.digsilent.de/en/faq-reader-powerfactory/how-do-you-model-the-bonding-of-cables-isolated-single-and-double-bonded.html)
 - [Cable core/screen voltage and current profiles with Python](https://www.digsilent.de/en/faq-reader-powerfactory/do-you-have-a-python-script-to-calculate-the-voltage-and-current-in-a-line-as-function-of-distance.html)
+
+## Manufacturer example basis
+
+- [ABB, *XLPE Submarine Cable Systems*, Table 37](https://resources.news.e.abb.com/attachments/published/13326/en-US/55ED60680654/XLPE-Submarine-Cable-Systems-2GM5007-.pdf)
+  - 220 kV single-core cable, 1,200 mm² copper row used for Study 02 radial
+    dimensions, catalogue capacitance, and inductance.
 
 ## Interpretation
 

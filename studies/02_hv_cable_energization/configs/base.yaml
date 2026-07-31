@@ -17,6 +17,18 @@ powerfactory:
   grid: GRID_220KV_CABLE
   study_case: EMT - Cable Energization and Bonding
 
+objects:
+  source: GRID_EQUIVALENT
+  sending_bus: BUS_CABLE_SENDING_220
+  cable_bus: BUS_CABLE_LINE_SIDE_220
+  receiving_bus: BUS_CABLE_RECEIVING_220
+  breaker: CB_CABLE_220
+  core_line: CABLE_CORE_220KV_40KM
+  sheath_sending_bus: BUS_SHEATH_SENDING_220
+  sheath_receiving_bus: BUS_SHEATH_RECEIVING_220
+  sheath_line: CABLE_SHEATH_220KV_40KM
+  cable_system: CABLE_COUPLING_220KV_40KM
+
 network:
   nominal_voltage_kv: 220.0
   frequency_hz: 50.0
@@ -25,21 +37,44 @@ network:
     short_circuit_mva: 8000.0
     r_over_x: 0.10
   cable:
-    type_name: XLPE_220KV_1200CU_EXAMPLE
+    type_name: XLPE_220KV_1200CU_ABB_EQUIVALENT
     system_type_name: CABLE_SYSTEM_220KV_EXPLICIT_SHEATH
     length_km: 40.0
     rated_current_ka: 1.0
-    core_area_mm2: 1200.0
-    sheath_area_mm2: 185.0
     burial_depth_m: 1.5
     phase_spacing_m: 0.35
     soil_resistivity_ohm_m: 100.0
+    geometry:
+      source_id: ABB_2GM5007_TABLE_37_220KV_1200CU
+      source_url: https://resources.news.e.abb.com/attachments/published/13326/en-US/55ED60680654/XLPE-Submarine-Cable-Systems-2GM5007-.pdf
+      conductor:
+        material: annealed_copper
+        area_mm2: 1200.0
+        diameter_mm: 41.2
+        resistivity_uohm_cm_20c: 1.77
+        temperature_coefficient_per_k: 0.00382
+      main_insulation:
+        material: xlpe
+        nominal_thickness_mm: 23.0
+        capacitance_target_uf_per_km: 0.20
+        loss_tangent: 0.0002
+      diameter_over_insulation_mm: 90.6
+      sheath:
+        material: lead
+        thickness_mm: 3.1
+        resistivity_uohm_cm_20c: 20.65
+        temperature_coefficient_per_k: 0.0040
+      oversheath:
+        material: polyethylene_equivalent
+        relative_permittivity: 2.3
+        loss_tangent: 0.001
+      overall_diameter_mm: 125.2
     electrical:
       r1_ohm_per_km: 0.024
       r0_ohm_per_km: 0.180
-      inductance_mh_per_km: 0.350
-      inductance0_mh_per_km: 0.650
-      capacitance_uf_per_km: 0.230
+      inductance_mh_per_km: 1.330
+      inductance0_mh_per_km: 2.500
+      capacitance_uf_per_km: 0.200
       capacitance0_uf_per_km: 0.160
     emt_model:
       representation: distributed_frequency_dependent_phase_domain

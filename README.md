@@ -108,21 +108,22 @@ How do breaker point on wave and metallic-screen bonding affect the transient
 core voltage, screen voltage, conductor current, and screen current of a 40 km
 220 kV XLPE cable energized with an open receiving end?
 
-The target PowerFactory model uses geometric `TypCab`/`TypCabsys` data, a
-distributed frequency-dependent phase-domain representation, and explicit
-screen grounding. A sequence-only overhead-line surrogate will not be presented
-as the final cable model.
+The implemented builder creates catalogue-derived geometric `TypCab`/
+`TypCabsys` data, separate core and sheath `ElmLne` circuits, their `ElmCabsys`
+coupling, and a distributed frequency-dependent phase-domain representation.
+PowerFactory 2024 engine construction and API read-back pass; interactive native
+diagram export and the bonding sweep are the next gates.
 
 ### Current engineering basis
 
 | Quantity | First-order value |
 |---|---:|
-| Total capacitance | **9.20 uF/phase** |
-| Steady-state charging current | **0.367 kA/phase** |
-| Three-phase stored-energy scale | **445.28 kJ** |
-| Surge impedance | **39.01 ohm** |
-| One-way travel time | **0.359 ms** |
-| Samples per travel time at 2.5 us | **approximately 144** |
+| Total capacitance | **8.00 uF/phase** |
+| Steady-state charging current | **0.319 kA/phase** |
+| Three-phase stored-energy scale | **387.20 kJ** |
+| Surge impedance | **81.55 ohm** |
+| One-way travel time | **0.652 ms** |
+| Samples per travel time at 2.5 us | **approximately 261** |
 
 These are analytical scale checks, not EMT results. The exact status,
 assumptions, object/result contract, bonding scenarios, and completion gate are
@@ -130,9 +131,10 @@ documented in the
 [Study 02 README](studies/02_hv_cable_energization/README.md).
 
 A read-only PowerFactory 2024 schema preflight now verifies the installed
-`TypCab`, `TypCabsys`, and `ElmCabsys` attribute names before the geometric model
-builder is allowed to write objects. This keeps the next API stage tied to the
-installed version rather than to guessed field names.
+`TypCab`, `TypCabsys`, and `ElmCabsys` attributes used by the geometric model
+builder. The dimensions, capacitance, and inductance are tied to the ABB Table
+37 row for a 220 kV, 1,200 mm² copper single-core cable; installation and
+unspecified material properties remain explicit teaching assumptions.
 
 ### Initial figures
 
@@ -207,7 +209,7 @@ pfemt analyse studies/01_line_energization/configs/base.yaml
 For the native diagram, run the supplied `*_inside_powerfactory.py` scripts from
 interactive `ComPython` objects as explained in the Study 01 README.
 
-### Reproduce the current Study 02 design basis
+### Reproduce the current Study 02 design basis and API model
 
 ```powershell
 pfemt validate studies/02_hv_cable_energization/configs/base.yaml
@@ -218,8 +220,12 @@ python studies/02_hv_cable_energization/scripts/inspect_installed_cable_schema.p
   --output studies/02_hv_cable_energization/outputs/powerfactory_cable_schema.json
 ```
 
-The Study 02 README explicitly lists what remains before any EMT result can be
-published.
+For the native model, select
+`studies/02_hv_cable_energization/scripts/build_model_inside_powerfactory.py`
+from an interactive `ComPython` object. Run the companion
+`export_diagram_inside_powerfactory.py` script after visually reviewing the
+linked diagram. The Study 02 README documents the exact steps and the remaining
+gates before any EMT result can be published.
 
 ## Repository structure
 

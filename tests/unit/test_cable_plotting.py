@@ -9,6 +9,7 @@ def test_cable_design_figures_are_generated(tmp_path: Path) -> None:
     config = load_yaml(root / "studies/02_hv_cable_energization/configs/base.yaml")
     figures = generate_cable_design_figures(config, tmp_path)
     assert set(figures) == {
+        "geometry",
         "parameters",
         "length_sensitivity",
         "bonding_matrix",

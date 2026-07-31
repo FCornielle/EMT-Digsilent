@@ -8,7 +8,10 @@ from typing import Any, Dict, Mapping, Sequence, Tuple
 from pfemt.errors import PowerFactoryExecutionError
 from pfemt.pfapi import execute, set_attribute
 
-DIAGRAM_NAME = "EMT Line Energization 230 kV"
+LINE_DIAGRAM_NAME = "EMT Line Energization 230 kV"
+CABLE_DIAGRAM_NAME = "EMT Cable Energization 220 kV"
+# Backwards-compatible public name used by Study 01 tests and scripts.
+DIAGRAM_NAME = LINE_DIAGRAM_NAME
 
 # Coordinates are stored in PowerFactory diagram units. They deliberately form
 # a horizontal engineering one-line, rather than a presentation-only drawing.
@@ -19,6 +22,18 @@ LINE_ENERGIZATION_LAYOUT: Mapping[str, Tuple[float, float, int]] = {
     "BUS_LINE_SIDE_230": (85.0, 60.0, 90),
     "LINE_230KV_150KM": (120.0, 60.0, 90),
     "BUS_RECEIVING_230": (155.0, 60.0, 90),
+}
+
+CABLE_ENERGIZATION_LAYOUT: Mapping[str, Tuple[float, float, int]] = {
+    "GRID_EQUIVALENT": (20.0, 55.0, 270),
+    "BUS_CABLE_SENDING_220": (45.0, 55.0, 90),
+    "CB_CABLE_220": (65.0, 55.0, 90),
+    "BUS_CABLE_LINE_SIDE_220": (85.0, 55.0, 90),
+    "CABLE_CORE_220KV_40KM": (125.0, 55.0, 90),
+    "BUS_CABLE_RECEIVING_220": (165.0, 55.0, 90),
+    "BUS_SHEATH_SENDING_220": (85.0, 90.0, 90),
+    "CABLE_SHEATH_220KV_40KM": (125.0, 90.0, 90),
+    "BUS_SHEATH_RECEIVING_220": (165.0, 90.0, 90),
 }
 
 
@@ -38,11 +53,15 @@ def _graphic_objects(diagram: Any) -> Dict[str, Any]:
     return result
 
 
-def _linked_diagrams(folder: Any) -> list[Any]:
-    """Return diagrams that already represent every object in this study."""
-    expected = set(LINE_ENERGIZATION_LAYOUT)
+def _linked_diagrams_for(folder: Any, expected: set[str]) -> list[Any]:
+    """Return diagrams that already represent every expected network object."""
     diagrams = list(folder.GetContents("*.IntGrfnet") or [])
     return [diagram for diagram in diagrams if expected.issubset(_graphic_objects(diagram))]
+
+
+def _linked_diagrams(folder: Any) -> list[Any]:
+    """Return diagrams that already represent every Study 01 object."""
+    return _linked_diagrams_for(folder, set(LINE_ENERGIZATION_LAYOUT))
 
 
 def _connections(graphic: Any) -> Dict[int, Any]:
@@ -83,7 +102,7 @@ def apply_line_energization_layout(diagram: Any) -> Any:
     _set_connection(line_connections[0], (120.0, 85.0, 85.0), (60.0, 60.0, 60.0))
     _set_connection(line_connections[1], (120.0, 155.0, 155.0), (60.0, 60.0, 60.0))
 
-    set_attribute(diagram, "loc_name", DIAGRAM_NAME)
+    set_attribute(diagram, "loc_name", LINE_DIAGRAM_NAME)
     for name, value in (
         ("rLBotX", 10.0),
         ("rLBotY", 45.0),
@@ -100,7 +119,7 @@ def ensure_line_energization_diagram(app: Any, grid: Any) -> Any:
     linked = _linked_diagrams(folder)
     if linked:
         preferred = next(
-            (diagram for diagram in linked if diagram.loc_name == DIAGRAM_NAME),
+            (diagram for diagram in linked if diagram.loc_name == LINE_DIAGRAM_NAME),
             linked[0],
         )
         return apply_line_energization_layout(preferred)
@@ -127,6 +146,84 @@ def ensure_line_energization_diagram(app: Any, grid: Any) -> Any:
             return apply_line_energization_layout(candidate)
     raise PowerFactoryExecutionError(
         "Diagram Layout Tool completed but did not create the expected linked one-line diagram"
+    )
+
+
+def apply_cable_energization_layout(diagram: Any) -> Any:
+    """Arrange the explicit core and metallic-sheath circuits in two rows."""
+    graphics = _graphic_objects(diagram)
+    missing = sorted(set(CABLE_ENERGIZATION_LAYOUT) - set(graphics))
+    if missing:
+        raise PowerFactoryExecutionError(
+            "PowerFactory cable diagram is missing graphical objects: {}".format(missing)
+        )
+    for object_name, (x_coord, y_coord, rotation) in CABLE_ENERGIZATION_LAYOUT.items():
+        graphic = graphics[object_name]
+        set_attribute(graphic, "rCenterX", x_coord)
+        set_attribute(graphic, "rCenterY", y_coord)
+        set_attribute(graphic, "iRot", rotation)
+
+    source_connection = _connections(graphics["GRID_EQUIVALENT"])[0]
+    _set_connection(source_connection, (24.375, 45.0), (55.0, 55.0))
+
+    breaker_connections = _connections(graphics["CB_CABLE_220"])
+    _set_connection(breaker_connections[0], (62.8125, 45.0, 45.0), (55.0, 55.0, 55.0))
+    _set_connection(breaker_connections[1], (67.1875, 85.0, 85.0), (55.0, 55.0, 55.0))
+
+    core_connections = _connections(graphics["CABLE_CORE_220KV_40KM"])
+    _set_connection(core_connections[0], (125.0, 85.0, 85.0), (55.0, 55.0, 55.0))
+    _set_connection(core_connections[1], (125.0, 165.0, 165.0), (55.0, 55.0, 55.0))
+
+    sheath_connections = _connections(graphics["CABLE_SHEATH_220KV_40KM"])
+    _set_connection(sheath_connections[0], (125.0, 85.0, 85.0), (90.0, 90.0, 90.0))
+    _set_connection(sheath_connections[1], (125.0, 165.0, 165.0), (90.0, 90.0, 90.0))
+
+    set_attribute(diagram, "loc_name", CABLE_DIAGRAM_NAME)
+    for name, value in (
+        ("rLBotX", 10.0),
+        ("rLBotY", 40.0),
+        ("rRTopX", 175.0),
+        ("rRTopY", 105.0),
+    ):
+        set_attribute(diagram, name, value, required=False)
+    return diagram
+
+
+def ensure_cable_energization_diagram(app: Any, grid: Any) -> Any:
+    """Create, link, and arrange the native explicit-sheath cable diagram."""
+    folder = app.GetProjectFolder("dia", 1)
+    expected = set(CABLE_ENERGIZATION_LAYOUT)
+    linked = _linked_diagrams_for(folder, expected)
+    if linked:
+        preferred = next(
+            (diagram for diagram in linked if diagram.loc_name == CABLE_DIAGRAM_NAME),
+            linked[0],
+        )
+        return apply_cable_energization_layout(preferred)
+
+    before = {item.GetFullName() for item in list(folder.GetContents("*.IntGrfnet") or [])}
+    command = app.GetFromStudyCase("ComSgllayout")
+    if command is None:
+        raise PowerFactoryExecutionError("The active Study Case has no Diagram Layout Tool")
+    set_attribute(command, "iAction", 0)
+    set_attribute(command, "pGrids", grid)
+    execute(command, "PowerFactory Diagram Layout Tool")
+
+    candidates = [
+        item
+        for item in list(folder.GetContents("*.IntGrfnet") or [])
+        if item.GetFullName() not in before
+    ]
+    candidates.extend(
+        diagram
+        for diagram in _linked_diagrams_for(folder, expected)
+        if diagram not in candidates
+    )
+    for candidate in candidates:
+        if expected.issubset(_graphic_objects(candidate)):
+            return apply_cable_energization_layout(candidate)
+    raise PowerFactoryExecutionError(
+        "Diagram Layout Tool completed but did not create the expected cable diagram"
     )
 
 

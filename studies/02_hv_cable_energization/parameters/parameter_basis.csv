@@ -3,12 +3,25 @@ nominal_voltage,220,kV line-line RMS,example,system voltage base
 frequency,50,Hz,example,source and charging-current calculation
 source_short_circuit_power,8000,MVA,example,Thevenin source strength
 cable_length,40,km,example,base energization case
-core_area,1200,mm2,example,target TypCab geometry
-sheath_area,185,mm2,example,target explicit metallic screen
+conductor_area,1200,mm2,ABB Table 37,TypCab compact copper conductor
+conductor_diameter,41.2,mm,ABB Table 37,TypCab conductor outer diameter
+nominal_xlpe_thickness,23.0,mm,ABB Table 37,catalogue reference
+diameter_over_insulation,90.6,mm,ABB Table 37,effective insulation boundary
+effective_main_insulation_thickness,24.7,mm,derived,preserves diameter over insulation
+calibrated_main_insulation_epsr,2.83293,relative,derived,matches catalogue capacitance in coaxial check
+lead_sheath_thickness,3.1,mm,ABB Table 37,explicit metallic sheath geometry
+lead_sheath_area,912.538,mm2,derived,annular area used to cross-check thickness
+overall_cable_diameter,125.2,mm,ABB Table 37,outer geometry boundary
+equivalent_oversheath_thickness,14.2,mm,derived,homogenized radial region outside lead sheath
 burial_depth,1.5,m,assumed,target cable-system geometry
 phase_spacing,0.35,m,assumed,target flat formation
 soil_resistivity,100,ohm m,assumed,earth-return calculation
-positive_sequence_resistance,0.024,ohm/km,example,analytical screening only
-positive_sequence_inductance,0.350,mH/km,example,analytical screening only
-core_screen_capacitance,0.230,uF/km,example,charging current and energy
+conductor_resistivity,1.77,uohm cm at 20 C,engineering assumption,annealed copper TypCab input
+lead_sheath_resistivity,20.65,uohm cm at 20 C,engineering assumption,lead sheath TypCab input
+positive_sequence_resistance,0.024,ohm/km,screening assumption,analytical plotting only
+zero_sequence_resistance,0.180,ohm/km,screening assumption,analytical plotting only
+positive_sequence_inductance,1.330,mH/km,ABB Table 37,analytical screening and travel-time scale
+zero_sequence_inductance,2.500,mH/km,screening assumption,analytical plotting only
+core_screen_capacitance,0.200,uF/km,ABB Table 37,charging current and energy
+zero_sequence_capacitance,0.160,uF/km,screening assumption,analytical plotting only
 emt_time_step,2.5,us,initial numerical choice,requires convergence study

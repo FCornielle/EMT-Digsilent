@@ -18,6 +18,10 @@ All notable changes are documented in this file. The project follows
 - Study-specific README contracts for all twelve industrial cases.
 - Study 02 cable-energization engineering basis, bonding matrix, analytical checks,
   figures, and tests.
+- Catalogue-derived Study 02 `TypCab`/`TypCabsys`/`ElmCabsys` builder, explicit
+  core/sheath circuits, native diagram layout, and internal PowerFactory scripts.
+- PowerFactory 2024 integration read-back and fit fingerprints that avoid
+  recalculating unchanged frequency-dependent cable parameters.
 
 ### Changed
 

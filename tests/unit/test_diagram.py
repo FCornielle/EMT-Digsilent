@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 
 from pfemt.diagram import (
+    CABLE_DIAGRAM_NAME,
+    CABLE_ENERGIZATION_LAYOUT,
     DIAGRAM_NAME,
     LINE_ENERGIZATION_LAYOUT,
     _linked_diagrams,
@@ -54,6 +56,29 @@ def test_powerfactory_connection_vectors_have_fixed_length() -> None:
     points = _padded_points([1.0, 2.0, 3.0])
     assert points[:3] == [1.0, 2.0, 3.0]
     assert points[3:] == [-1.0] * 17
+
+
+def test_cable_diagram_separates_core_and_sheath_circuits() -> None:
+    assert CABLE_DIAGRAM_NAME == "EMT Cable Energization 220 kV"
+    core_names = (
+        "BUS_CABLE_LINE_SIDE_220",
+        "CABLE_CORE_220KV_40KM",
+        "BUS_CABLE_RECEIVING_220",
+    )
+    sheath_names = (
+        "BUS_SHEATH_SENDING_220",
+        "CABLE_SHEATH_220KV_40KM",
+        "BUS_SHEATH_RECEIVING_220",
+    )
+    assert len(CABLE_ENERGIZATION_LAYOUT) == 9
+    assert {CABLE_ENERGIZATION_LAYOUT[name][1] for name in core_names} == {55.0}
+    assert {CABLE_ENERGIZATION_LAYOUT[name][1] for name in sheath_names} == {90.0}
+    assert [CABLE_ENERGIZATION_LAYOUT[name][0] for name in core_names] == [85.0, 125.0, 165.0]
+    assert [CABLE_ENERGIZATION_LAYOUT[name][0] for name in sheath_names] == [
+        85.0,
+        125.0,
+        165.0,
+    ]
 
 
 def test_existing_autolayout_diagram_is_detected_by_linked_objects() -> None:

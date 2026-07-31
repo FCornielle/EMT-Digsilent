@@ -8,7 +8,7 @@ sequence is defined in [`case_methodology.md`](case_methodology.md).
 | ID | Industrial study | Main KPI | Status |
 |---:|---|---|---|
 | 01 | [230 kV line energization and point on wave](../studies/01_line_energization/README.md) | open-end peak overvoltage | Verified baseline |
-| 02 | [HV cable energization with sheath/bonding alternatives](../studies/02_hv_cable_energization/README.md) | core/sheath voltage and current | Engineering basis |
+| 02 | [HV cable energization with sheath/bonding alternatives](../studies/02_hv_cable_energization/README.md) | core/sheath voltage and current | PF model verified; EMT baseline pending |
 | 03 | [Power-transformer energization](../studies/03_transformer_energization/README.md) | inrush, flux, harmonic content | Planned |
 | 04 | [Shunt-capacitor bank energization](../studies/04_capacitor_bank_energization/README.md) | peak/inrush frequency and duty | Planned |
 | 05 | [Transformer saturation sensitivity](../studies/05_transformer_saturation_sensitivity/README.md) | residual flux and inrush envelope | Planned |
@@ -23,7 +23,7 @@ sequence is defined in [`case_methodology.md`](case_methodology.md).
 ## Delivery sequence
 
 1. Maintain the verified Study 01 regression loop.
-2. Complete Study 02 with a geometric, explicit-screen cable model and bonding sweep.
+2. Execute and review the Study 02 geometric explicit-sheath model, then add its bonding sweep.
 3. Add transformer energization because it introduces nonlinear initialization,
    residual flux, and harmonic metrics reusable by later studies.
 4. Add variable-clearing fault and TRV cases, sharing event/protection utilities.

@@ -1,17 +1,17 @@
 reference:
-  configuration_sha256: "7B5B375A27B70990129CCA156A6CEB8A71C1933F9266E33D540E1FB33C24B992"
+  configuration_sha256: "CFCE61E985B444FC238FC5BBC895BFE9DF2A40AB9ED0699CC5C4B029C82CA92C"
   nominal_voltage_kv: 220.0
   cable_length_km: 40.0
   phase_voltage_rms_kv: 127.017059
-  total_capacitance_uf_per_phase: 9.2
-  steady_state_charging_current_ka: 0.367113
-  three_phase_stored_energy_kj: 445.28
-  surge_impedance_ohm: 39.0095
-  one_way_travel_time_ms: 0.358887
+  total_capacitance_uf_per_phase: 8.0
+  steady_state_charging_current_ka: 0.319229
+  three_phase_stored_energy_kj: 387.2
+  surge_impedance_ohm: 81.5475
+  one_way_travel_time_ms: 0.652380
 
 tolerances:
   relative: 0.001
 
 notes:
   - "Analytical design basis only; this file is not an EMT simulation baseline."
-  - "Replace example parameters before using the study for an equipment decision."
+  - "Catalogue geometry is illustrative; replace installation assumptions before an equipment decision."

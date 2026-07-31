@@ -2,9 +2,11 @@
 
 ## Current maturity
 
-Study 02 is at the engineering-basis stage. The parameter register, bonding
-matrix, analytical checks, plotting pipeline, and PowerFactory object contract
-are defined. An EMT waveform or numerical baseline is not claimed yet.
+Study 02 has an idempotent PowerFactory API builder, a parameter register,
+bonding matrix, analytical checks, plotting pipeline, native-diagram layout,
+and PowerFactory object contract. The builder still requires execution and
+visual review in the interactive PowerFactory 2024 application. An EMT waveform
+or numerical baseline is not claimed yet.
 
 ## Model boundary
 
@@ -19,11 +21,20 @@ are defined. An EMT waveform or numerical baseline is not claimed yet.
 
 ## Data classification
 
-All electrical and geometric values are transparent engineering-example data.
-They are not manufacturer data. A project application must replace them with
-the cable data sheet, installation geometry, bonding-section lengths, earth
-continuity conductor, grounding impedances, joint details, and measured soil
-properties.
+Conductor and radial dimensions, catalogue capacitance, and inductance come
+from the ABB 220 kV, 1,200 mm2 copper row in Table 37 of *XLPE Submarine Cable
+Systems*. The DIgSILENT tutorial method is used to preserve diameter over
+insulation and calibrate equivalent permittivity when semiconducting-layer
+dimensions are unavailable.
+
+The catalogue row does not provide every material or construction parameter.
+The radial region outside the lead sheath is therefore homogenized as an
+equivalent oversheath, with no explicit armour or serving. Installation
+geometry, soil, resistivities, loss tangents, sequence screening values, and
+bonding details remain transparent assumptions. A project application must
+replace them with the project cable sheet, installation geometry,
+bonding-section lengths, earth continuity conductor, grounding impedances,
+joint details, and measured soil properties.
 
 ## Numerical boundary
 

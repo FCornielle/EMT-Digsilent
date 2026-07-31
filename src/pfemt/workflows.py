@@ -13,6 +13,7 @@ from typing import Any, Dict, Mapping, Optional
 import pandas as pd
 
 from pfemt.application import connect
+from pfemt.builders.cable_energization import build_cable_energization_model
 from pfemt.builders.line_energization import build_line_energization_model
 from pfemt.config import load_yaml, resolve_from_config, validate_study_config
 from pfemt.diagram import export_powerfactory_diagram
@@ -48,10 +49,13 @@ def output_directory(config: Mapping[str, Any]) -> Path:
 
 
 def build(config: Mapping[str, Any], app: Optional[Any] = None) -> Dict[str, Any]:
-    """Connect and build the line-energization model."""
+    """Connect and dispatch to the configured study model builder."""
     validate_study_config(config)
     pf_app = app or connect(config)
-    objects = build_line_energization_model(pf_app, config)
+    if "cable" in config.get("network", {}):
+        objects = build_cable_energization_model(pf_app, config)
+    else:
+        objects = build_line_energization_model(pf_app, config)
     # Keep the engine-mode Application proxy alive while callers inspect the
     # returned PowerFactory objects.
     objects["application"] = pf_app
@@ -62,7 +66,10 @@ def export_diagram(config: Mapping[str, Any], app: Optional[Any] = None) -> Path
     """Build and export the linked PowerFactory one-line diagram."""
     validate_study_config(config)
     pf_app = app or connect(config)
-    objects = build_line_energization_model(pf_app, config)
+    if "cable" in config.get("network", {}):
+        objects = build_cable_energization_model(pf_app, config)
+    else:
+        objects = build_line_energization_model(pf_app, config)
     return export_powerfactory_diagram(
         pf_app,
         objects["diagram"],

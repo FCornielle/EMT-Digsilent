@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 
 import pandas as pd
@@ -17,6 +18,9 @@ def test_cable_analytical_reference_matches_versioned_configuration() -> None:
         baseline = yaml.safe_load(stream)
     actual = cable_derived_quantities(config)
     expected = baseline["reference"]
+    assert hashlib.sha256(
+        (root / "studies/02_hv_cable_energization/configs/base.yaml").read_bytes()
+    ).hexdigest().upper() == expected["configuration_sha256"]
     tolerance = baseline["tolerances"]["relative"]
     for key in (
         "phase_voltage_rms_kv",

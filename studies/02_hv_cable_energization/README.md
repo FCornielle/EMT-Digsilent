@@ -1,10 +1,11 @@
 # Study 02 — 220 kV XLPE Cable Energization and Sheath Bonding
 
-> **Status: engineering basis started.** Configuration, parameter traceability,
-> analytical checks, a 24-case bonding-by-angle manifest, plotting, and tests
-> are implemented.
-> The detailed `TypCab`/`TypCabsys` EMT model and its waveform baseline are the
-> next delivery. No figure in this README is presented as an EMT result.
+> **Status: PowerFactory model built and API-verified; EMT baseline pending.** The
+> catalogue-derived `TypCab`, geometric `TypCabsys`, explicit core/sheath
+> `ElmLne` pair, `ElmCabsys` coupling, native-diagram layout, 24-case manifest,
+> analytical checks, and tests are implemented. PowerFactory 2024 engine
+> integration and API read-back pass. The interactive PNG export and waveform
+> baseline remain to be completed. No figure below is presented as an EMT result.
 
 ## 1. Industrial question
 
@@ -46,7 +47,7 @@ PowerFactory represents the explicit-sheath example as core and screen line
 circuits coupled by `ElmCabsys`; the coupling receives the geometric
 `TypCabsys`, which in turn references the single-core `TypCab` definition.
 
-The final API builder will use geometric cable objects rather than treating the
+The idempotent API builder uses geometric cable objects rather than treating the
 cable as an overhead line:
 
 | Function | Target PowerFactory object | Stable name |
@@ -55,8 +56,8 @@ cable as an overhead line:
 | Sending bus | `ElmTerm` | `BUS_CABLE_SENDING_220` |
 | Breaker | `ElmCoup` | `CB_CABLE_220` |
 | Core circuit | `ElmLne` | `CABLE_CORE_220KV_40KM` |
-| Screen circuit | `ElmLne` | `CABLE_SCREEN_220KV_40KM` |
-| Cable coupling | `ElmCabsys` | `CABLE_SYSTEM_220KV_40KM` |
+| Screen circuit | `ElmLne` | `CABLE_SHEATH_220KV_40KM` |
+| Cable coupling | `ElmCabsys` | `CABLE_COUPLING_220KV_40KM` |
 | Cable geometry/type | `TypCab` / `TypCabsys` | versioned in YAML |
 | Receiving bus | `ElmTerm` | `BUS_CABLE_RECEIVING_220` |
 | Screen grounding | grounding branches/nodes | one set per bonding case |
@@ -68,7 +69,7 @@ simple sequence-only `TypLne` will not be used as the final bonding model.
 
 ### Installed API schema preflight
 
-The next implementation step now includes a read-only schema inspector:
+The implementation includes a read-only schema inspector:
 [`scripts/inspect_installed_cable_schema.py`](scripts/inspect_installed_cable_schema.py).
 Against the installed PowerFactory 2024 data schema it confirms the cable
 classes and their real attribute names before any object is created. The latest
@@ -89,9 +90,62 @@ python studies/02_hv_cable_energization/scripts/inspect_installed_cable_schema.p
 ```
 
 The generated JSON remains an environment report. Attribute presence alone is
-not permission to guess geometry, units, or enumeration values; those inputs
-must be taken from a reviewed cable datasheet or an approved PowerFactory cable
-template before the idempotent builder is enabled.
+not evidence that a model is physically valid; geometry, material data, units,
+and calculated matrices still require engineering review.
+
+### Run the API builder inside PowerFactory
+
+The stable execution path is an external script selected from a PowerFactory
+`ComPython` object. Use
+[`scripts/build_model_inside_powerfactory.py`](scripts/build_model_inside_powerfactory.py)
+as that external script and execute it from the interactive application.
+
+The builder then performs these steps:
+
+1. creates or activates project `PFEMT_02_HV_Cable_Energization_220kV`;
+2. creates the `TypCab` radial layer definition from the reviewed YAML fields;
+3. creates one buried, flat-formation `TypCabsys` with phase coordinates
+   `[-0.35, 0.00, +0.35] m` at 1.5 m depth;
+4. creates separate core and metallic-sheath `ElmLne` circuits with equal
+   40 km lengths;
+5. couples those circuits through `ElmCabsys.plines`, with the core listed first
+   as prescribed by the DIgSILENT bonding tutorial;
+6. requests the distributed frequency-dependent phase-domain representation,
+   updates the coupling, and calls `ElmCabsys.FitParams()`;
+7. creates and activates the EMT Study Case and its result/event commands;
+8. creates or reuses the linked native PowerFactory diagram and applies the
+   deterministic two-row core/sheath layout; and
+9. writes changes to the PowerFactory database when that method is available.
+
+Every named object is created with `create_or_get`, so rerunning the script
+updates the study instead of duplicating the network. The successful fit writes
+a SHA-256 input signature to `ElmCabsys.desc`; unchanged reruns reuse those
+parameters, while a changed cable input forces a new fit. After the build, select
+[`scripts/export_diagram_inside_powerfactory.py`](scripts/export_diagram_inside_powerfactory.py)
+from a second `ComPython` object to export the visible native diagram to
+`outputs/figures/powerfactory_single_line.png`.
+
+### PowerFactory 2024 integration evidence
+
+The opt-in integration test has built and read back the actual project
+`PFEMT_02_HV_Cable_Energization_220kV`. The verified database state is:
+
+- one `TypCab` with 41.2 mm conductor diameter, 3.1 mm lead sheath, main/
+  outer insulation vector `[24.7, 14.2, 1.0] mm`, calibrated main-insulation
+  relative permittivity 2.832934, and 90.011% conductor fill factor;
+- one buried `TypCabsys` with three phases, explicit sheath (`red=[0]`), no
+  cross-bonding in the base state, and coordinates
+  `[[-0.35, 0.00, +0.35, 1.5, 1.5, 1.5]] m`;
+- one `ElmCabsys` linking the core line first and sheath line second, with
+  `i_dist=1`, `i_model=1`, `fd_model=1`, 10 Hz to 20 kHz fitting band, and
+  2 kHz main transient frequency; and
+- one linked `IntGrfnet` containing exactly nine expected graphics, with the
+  core circuit at y=55 and the sheath circuit at y=90.
+
+The native diagram is stored in PowerFactory as `EMT Cable Energization 220 kV`.
+PNG export cannot be completed from the headless engine because its Graphics
+Board is unavailable; it must be run with the supplied interactive `ComPython`
+export script.
 
 ## 4. Input basis
 
@@ -105,21 +159,51 @@ value and its maturity are listed in
 | Frequency | 50 Hz | example |
 | Source strength | 8,000 MVA | example |
 | Cable length | 40 km | example |
-| Core area | 1,200 mm² Cu | example |
-| Screen area | 185 mm² | example |
+| Conductor area / diameter | 1,200 mm² Cu / 41.2 mm | ABB Table 37 |
+| Nominal XLPE thickness | 23.0 mm | ABB Table 37 |
+| Diameter over insulation | 90.6 mm | ABB Table 37 |
+| Lead-sheath thickness | 3.1 mm | ABB Table 37 |
+| Overall cable diameter | 125.2 mm | ABB Table 37 |
 | Burial depth | 1.5 m | assumed |
 | Phase spacing | 0.35 m | assumed |
 | Soil resistivity | 100 ohm m | assumed |
-| Core-screen capacitance | 0.230 uF/km | example |
+| Core-screen capacitance | 0.200 uF/km | ABB Table 37 |
+| Inductance | 1.330 mH/km | ABB Table 37 |
 | Initial EMT step | 2.5 us | requires convergence |
+
+The physical row is the ABB 220 kV single-core, 1,200 mm² copper-conductor
+example in Table 37. It is used as an industrially recognizable teaching basis,
+not as a complete product reproduction. Following DIgSILENT's cable-parameter
+tutorial, the API preserves the catalogue diameter over insulation: the
+effective main-insulation thickness is `(90.6 - 41.2)/2 = 24.7 mm`. Because
+semiconducting-layer dimensions are not given, the equivalent relative
+permittivity is calibrated to the 0.20 uF/km catalogue capacitance, giving
+approximately 2.833. The 3.1 mm lead sheath corresponds to an annular area of
+approximately 912.5 mm².
+
+The 14.2 mm radial region outside the lead sheath is represented as an
+equivalent oversheath so the overall diameter remains 125.2 mm. Armour and
+serving are not explicitly represented; burial, spacing, soil, resistivity, and
+loss-tangent values remain declared study assumptions. These boundaries must be
+replaced for an actual installation.
+
+![Catalogue-to-TypCab radial mapping](../../docs/assets/02_cable_geometry.png)
+
+**How to read this figure.** The circles are drawn at their declared radial
+dimensions, so the narrow grey ring makes the 3.1 mm lead sheath visible between
+the XLPE equivalent and the outer construction. The figure also exposes the
+model reduction: the large black region is one homogenized outer-insulation
+layer, not an assertion that the catalogue cable has no separate bedding,
+armour, or serving. This is why the final frequency-domain matrices must be
+reviewed against project data before the EMT sweep is accepted.
 
 ![Cable parameter overview](../../docs/assets/02_cable_parameter_overview.png)
 
 **How to read this figure.** The zero-sequence resistance and inductance exceed
 the positive-sequence values because the return path includes screens, grounding
 connections, and earth. The core-screen capacitance dominates the charging
-current and stored-energy scale shown in the summary box. The calculated 0.359
-ms travel time and roughly 144 samples per travel time indicate that the initial
+current and stored-energy scale shown in the summary box. The calculated 0.652
+ms travel time and roughly 261 samples per travel time indicate that the initial
 2.5 us step can resolve the first wavefront, but they do not replace a formal
 time-step and fitting-band convergence study.
 
@@ -178,18 +262,18 @@ travel     = length / [1/sqrt(L*C)]
 For the 40 km example:
 
 - phase voltage: **127.02 kV RMS**;
-- total capacitance: **9.20 uF per phase**;
-- first-order steady-state charging current: **0.367 kA per phase**;
-- three-phase stored-energy scale: **445.28 kJ**;
-- surge impedance: **39.01 ohm**;
-- one-way travel time: **0.359 ms**;
-- approximately **144 time steps per one-way travel time** at 2.5 us.
+- total capacitance: **8.00 uF per phase**;
+- first-order steady-state charging current: **0.319 kA per phase**;
+- three-phase stored-energy scale: **387.20 kJ**;
+- surge impedance: **81.55 ohm**;
+- one-way travel time: **0.652 ms**;
+- approximately **261 time steps per one-way travel time** at 2.5 us.
 
 ![Cable length sensitivity](../../docs/assets/02_cable_length_sensitivity.png)
 
 **How to read this figure.** Both curves are linear because total capacitance is
 proportional to cable length in this analytical model. The orange marker is the
-40 km base case, corresponding to 0.367 kA charging current and 445.28 kJ stored
+40 km base case, corresponding to 0.319 kA charging current and 387.20 kJ stored
 energy. The plot is useful for checking input scale and recognizing how quickly
 reactive demand grows with length, but it cannot reproduce sheath coupling,
 frequency-dependent attenuation, or switching-wave reflections.
@@ -255,10 +339,12 @@ they are verified against the installed cable-system model.
 - parameter/assumption register;
 - four explicit bonding scenarios and 24 deterministic bonding-by-angle cases;
 - analytical KPI calculations and versioned reference;
-- a versioned scenario manifest and four educational design-basis figures;
+- a versioned scenario manifest and five educational design-basis figures;
 - an installed PowerFactory cable-class schema preflight;
-- unit and regression tests;
-- target PowerFactory object and result contracts.
+- an idempotent `TypCab`/`TypCabsys`/`ElmCabsys` API builder;
+- an internal `ComPython` build script and native-diagram export script;
+- unit, regression, builder-contract, and opt-in integration tests;
+- target PowerFactory result contracts.
 
 Generate the current figures with:
 
@@ -275,16 +361,19 @@ pfemt manifest studies/02_hv_cable_energization/configs/base.yaml
 
 ## 10. Completion gate
 
-Study 02 remains **Started**, not **Implemented**, until all of the following are
-available:
+Study 02 remains **Started**, not **Complete**, until all of the following are
+available. A checked item means the repository implementation exists; it does
+not substitute for reviewing the executed PowerFactory model.
 
-1. idempotent `TypCab`/`TypCabsys` PowerFactory API builder;
-2. native linked single-line diagram and exported image;
-3. verified core and screen result-variable identifiers;
-4. complete bonding × point-on-wave EMT campaign;
-5. time-step and frequency-band sensitivity;
-6. frequency-sweep versus EMT/FFT comparison;
-7. compact PowerFactory baseline and curated result figures.
+- [x] idempotent `TypCab`/`TypCabsys`/`ElmCabsys` PowerFactory API builder;
+- [x] deterministic native linked-diagram generator;
+- [x] successful PowerFactory 2024 engine build and object/diagram read-back;
+- [ ] exported native diagram image from the interactive Graphics Board;
+- [ ] verified core and screen result-variable identifiers;
+- [ ] complete bonding x point-on-wave EMT campaign;
+- [ ] time-step and frequency-band sensitivity;
+- [ ] frequency-sweep versus EMT/FFT comparison;
+- [ ] compact PowerFactory baseline and curated result figures.
 
 ## 11. Technical references
 
@@ -294,3 +383,4 @@ available:
 - [DIgSILENT: isolated, single-point, both-end, and cross-bonded screens](https://www.digsilent.de/en/faq-reader-powerfactory/how-do-you-model-the-bonding-of-cables-isolated-single-and-double-bonded.html)
 - [DIgSILENT: detailed cable/sheath voltage and current profiles with Python](https://www.digsilent.de/en/faq-reader-powerfactory/do-you-have-a-python-script-to-calculate-the-voltage-and-current-in-a-line-as-function-of-distance.html)
 - [DIgSILENT: validate cable EMT models with frequency sweep and EMT/FFT](https://www.digsilent.de/en/faq-reader-powerfactory/how-can-you-validate-cable-and-overhead-line-models-for-emt-simulations/category/dynamic-simulation.html)
+- [ABB: XLPE Submarine Cable Systems, Table 37](https://resources.news.e.abb.com/attachments/published/13326/en-US/55ED60680654/XLPE-Submarine-Cable-Systems-2GM5007-.pdf)

@@ -6,6 +6,7 @@ import pytest
 from pfemt.cable import (
     cable_bonding_cases,
     cable_derived_quantities,
+    cable_geometry,
     cable_length_sensitivity,
     cable_scenarios,
     export_cable_scenario_manifest,
@@ -21,11 +22,22 @@ def _config() -> dict:
 def test_cable_design_basis_has_expected_physical_scale() -> None:
     result = cable_derived_quantities(_config())
     assert result["phase_voltage_rms_kv"] == pytest.approx(220.0 / np.sqrt(3.0))
-    assert result["total_capacitance_uf_per_phase"] == pytest.approx(9.2)
-    assert result["steady_state_charging_current_ka"] == pytest.approx(0.367113, rel=1e-5)
-    assert result["three_phase_stored_energy_kj"] == pytest.approx(445.28)
-    assert result["one_way_travel_time_ms"] == pytest.approx(0.358887, rel=1e-5)
+    assert result["total_capacitance_uf_per_phase"] == pytest.approx(8.0)
+    assert result["steady_state_charging_current_ka"] == pytest.approx(0.319229, rel=1e-5)
+    assert result["three_phase_stored_energy_kj"] == pytest.approx(387.2)
+    assert result["one_way_travel_time_ms"] == pytest.approx(0.652380, rel=1e-5)
     assert result["samples_per_travel_time"] > 100.0
+
+
+def test_catalogue_geometry_is_converted_to_consistent_powerfactory_layers() -> None:
+    geometry = cable_geometry(_config())
+    assert geometry.conductor_diameter_mm == pytest.approx(41.2)
+    assert geometry.conductor_fill_factor_pct == pytest.approx(90.0113, rel=1e-5)
+    assert geometry.nominal_main_insulation_thickness_mm == pytest.approx(23.0)
+    assert geometry.effective_main_insulation_thickness_mm == pytest.approx(24.7)
+    assert geometry.main_insulation_relative_permittivity == pytest.approx(2.83293, rel=1e-5)
+    assert geometry.sheath_area_mm2 == pytest.approx(912.538, rel=1e-5)
+    assert geometry.oversheath_thickness_mm == pytest.approx(14.2)
 
 
 def test_cable_length_sensitivity_is_linear_for_capacitive_quantities() -> None:

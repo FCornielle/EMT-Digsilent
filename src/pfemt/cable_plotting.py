@@ -11,10 +11,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import ListedColormap
+from matplotlib.patches import Circle
 
 from pfemt.cable import (
     cable_bonding_cases,
     cable_derived_quantities,
+    cable_geometry,
     cable_length_sensitivity,
     cable_scenarios,
 )
@@ -96,6 +98,63 @@ def plot_cable_parameter_overview(config: Mapping[str, object], destination: Pat
         bbox={"boxstyle": "round,pad=0.6", "facecolor": "#F4F6F7", "edgecolor": "#AAB7B8"},
     )
     figure.suptitle("Study 02 cable input basis — not EMT results", fontsize=13)
+    figure.savefig(output, bbox_inches="tight")
+    plt.close(figure)
+    return output
+
+
+def plot_cable_geometry(config: Mapping[str, object], destination: Path) -> Path:
+    """Plot the catalogue dimensions as the radial layers mapped to ``TypCab``."""
+    _style()
+    output = Path(destination)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    geometry = cable_geometry(config)
+    conductor_radius = geometry.conductor_diameter_mm / 2.0
+    insulation_radius = conductor_radius + geometry.effective_main_insulation_thickness_mm
+    sheath_radius = insulation_radius + geometry.sheath_thickness_mm
+    overall_radius = geometry.overall_diameter_mm / 2.0
+    figure, axis = plt.subplots(figsize=(10.0, 7.0), constrained_layout=True)
+    layers = (
+        (overall_radius, "#222222", "Equivalent outer region: {:.1f} mm".format(
+            geometry.oversheath_thickness_mm
+        )),
+        (sheath_radius, "#9E9E9E", "Lead sheath: {:.1f} mm / {:.1f} mm2".format(
+            geometry.sheath_thickness_mm, geometry.sheath_area_mm2
+        )),
+        (insulation_radius, "#F2D16B", "Effective XLPE: {:.1f} mm".format(
+            geometry.effective_main_insulation_thickness_mm
+        )),
+        (conductor_radius, "#C87533", "Copper conductor: {:.1f} mm diameter".format(
+            geometry.conductor_diameter_mm
+        )),
+    )
+    for radius, color, label in layers:
+        axis.add_patch(Circle((0.0, 0.0), radius, facecolor=color, edgecolor="white", label=label))
+    axis.axhline(0.0, color="white", linewidth=0.8, alpha=0.7)
+    axis.set_xlim(-overall_radius * 1.15, overall_radius * 2.30)
+    axis.set_ylim(-overall_radius * 1.15, overall_radius * 1.15)
+    axis.set_aspect("equal")
+    axis.set_xlabel("Radial dimension [mm]")
+    axis.set_ylabel("Radial dimension [mm]")
+    axis.set_title("Study 02 catalogue-to-TypCab radial mapping — not EMT results")
+    axis.legend(loc="center left", bbox_to_anchor=(0.68, 0.58), frameon=True)
+    axis.text(
+        overall_radius * 1.35,
+        -overall_radius * 0.25,
+        "ABB Table 37 input\n"
+        "Nominal insulation: {:.1f} mm\n".format(
+            geometry.nominal_main_insulation_thickness_mm
+        )
+        + "Diameter over insulation: {:.1f} mm\n".format(2.0 * insulation_radius)
+        + "Overall diameter: {:.1f} mm\n".format(geometry.overall_diameter_mm)
+        + "Calibrated epsr: {:.3f}\n\n".format(
+            geometry.main_insulation_relative_permittivity
+        )
+        + "Semiconducting layers, armour, and\nserving are not explicit in this example.",
+        va="top",
+        family="monospace",
+        bbox={"boxstyle": "round,pad=0.6", "facecolor": "#F4F6F7", "edgecolor": "#AAB7B8"},
+    )
     figure.savefig(output, bbox_inches="tight")
     plt.close(figure)
     return output
@@ -242,6 +301,7 @@ def generate_cable_design_figures(
     """Generate all versionable Study 02 engineering-basis figures."""
     output = Path(destination)
     return {
+        "geometry": plot_cable_geometry(config, output / "cable_geometry.png"),
         "parameters": plot_cable_parameter_overview(config, output / "parameter_overview.png"),
         "length_sensitivity": plot_cable_length_sensitivity(
             config, output / "length_sensitivity.png"
