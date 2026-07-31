@@ -1,0 +1,25 @@
+scenario_id,bonding_id,bonding_label,switching_angle_deg,switching_time_s,grounded_sending,grounded_receiving,cross_bonded,source_voltage_pu,cable_length_km
+isolated_pow_000deg,isolated,Isolated screen,0.0,0.02,False,False,False,1.0,40.0
+isolated_pow_030deg,isolated,Isolated screen,30.0,0.021666666666666667,False,False,False,1.0,40.0
+isolated_pow_060deg,isolated,Isolated screen,60.0,0.023333333333333334,False,False,False,1.0,40.0
+isolated_pow_090deg,isolated,Isolated screen,90.0,0.025,False,False,False,1.0,40.0
+isolated_pow_120deg,isolated,Isolated screen,120.0,0.02666666666666667,False,False,False,1.0,40.0
+isolated_pow_150deg,isolated,Isolated screen,150.0,0.028333333333333335,False,False,False,1.0,40.0
+single_point_pow_000deg,single_point,Single-point bonded,0.0,0.02,True,False,False,1.0,40.0
+single_point_pow_030deg,single_point,Single-point bonded,30.0,0.021666666666666667,True,False,False,1.0,40.0
+single_point_pow_060deg,single_point,Single-point bonded,60.0,0.023333333333333334,True,False,False,1.0,40.0
+single_point_pow_090deg,single_point,Single-point bonded,90.0,0.025,True,False,False,1.0,40.0
+single_point_pow_120deg,single_point,Single-point bonded,120.0,0.02666666666666667,True,False,False,1.0,40.0
+single_point_pow_150deg,single_point,Single-point bonded,150.0,0.028333333333333335,True,False,False,1.0,40.0
+both_ends_pow_000deg,both_ends,Bonded at both ends,0.0,0.02,True,True,False,1.0,40.0
+both_ends_pow_030deg,both_ends,Bonded at both ends,30.0,0.021666666666666667,True,True,False,1.0,40.0
+both_ends_pow_060deg,both_ends,Bonded at both ends,60.0,0.023333333333333334,True,True,False,1.0,40.0
+both_ends_pow_090deg,both_ends,Bonded at both ends,90.0,0.025,True,True,False,1.0,40.0
+both_ends_pow_120deg,both_ends,Bonded at both ends,120.0,0.02666666666666667,True,True,False,1.0,40.0
+both_ends_pow_150deg,both_ends,Bonded at both ends,150.0,0.028333333333333335,True,True,False,1.0,40.0
+cross_bonded_pow_000deg,cross_bonded,Cross-bonded,0.0,0.02,True,True,True,1.0,40.0
+cross_bonded_pow_030deg,cross_bonded,Cross-bonded,30.0,0.021666666666666667,True,True,True,1.0,40.0
+cross_bonded_pow_060deg,cross_bonded,Cross-bonded,60.0,0.023333333333333334,True,True,True,1.0,40.0
+cross_bonded_pow_090deg,cross_bonded,Cross-bonded,90.0,0.025,True,True,True,1.0,40.0
+cross_bonded_pow_120deg,cross_bonded,Cross-bonded,120.0,0.02666666666666667,True,True,True,1.0,40.0
+cross_bonded_pow_150deg,cross_bonded,Cross-bonded,150.0,0.028333333333333335,True,True,True,1.0,40.0

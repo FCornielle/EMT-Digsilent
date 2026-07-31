@@ -7,6 +7,8 @@ from pfemt.cable import (
     cable_bonding_cases,
     cable_derived_quantities,
     cable_length_sensitivity,
+    cable_scenarios,
+    export_cable_scenario_manifest,
 )
 from pfemt.config import load_yaml
 
@@ -46,3 +48,32 @@ def test_bonding_cases_preserve_the_declared_topologies() -> None:
     ]
     assert cases[0]["grounded_sending"] is False
     assert cases[-1]["cross_bonded"] is True
+
+
+def test_cable_scenario_campaign_is_complete_and_deterministic() -> None:
+    first = cable_scenarios(_config())
+    second = cable_scenarios(_config())
+    assert first == second
+    assert len(first) == 24
+    assert len({scenario.scenario_id for scenario in first}) == 24
+    assert first[0].scenario_id == "isolated_pow_000deg"
+    assert first[5].switching_time_s == pytest.approx(0.028333333333333335)
+    assert first[6].bonding_id == "single_point"
+    assert first[-1].cross_bonded is True
+
+
+def test_cable_scenario_manifest_has_one_row_per_case(tmp_path: Path) -> None:
+    destination = export_cable_scenario_manifest(
+        cable_scenarios(_config()), tmp_path / "scenario_manifest.csv"
+    )
+    rows = destination.read_text(encoding="utf-8").splitlines()
+    assert len(rows) == 25
+    assert rows[0].startswith("scenario_id,bonding_id,bonding_label")
+
+
+def test_cable_scenario_ids_preserve_fractional_angles() -> None:
+    config = _config()
+    config["sweep"]["angles_deg"] = [2.4, 2.49]
+    identifiers = [scenario.scenario_id for scenario in cable_scenarios(config)]
+    assert identifiers[:2] == ["isolated_pow_002p4deg", "isolated_pow_002p49deg"]
+    assert len(set(identifiers)) == 8

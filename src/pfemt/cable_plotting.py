@@ -10,11 +10,13 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.colors import ListedColormap
 
 from pfemt.cable import (
     cable_bonding_cases,
     cable_derived_quantities,
     cable_length_sensitivity,
+    cable_scenarios,
 )
 
 
@@ -162,6 +164,78 @@ def plot_bonding_matrix(config: Mapping[str, object], destination: Path) -> Path
     return output
 
 
+def plot_cable_scenario_coverage(config: Mapping[str, object], destination: Path) -> Path:
+    """Show the deterministic bonding-by-angle execution matrix and event timing."""
+    _style()
+    output = Path(destination)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    scenarios = cable_scenarios(config)
+    bonding_cases = cable_bonding_cases(config)
+    angles = [float(value) % 360.0 for value in config["sweep"]["angles_deg"]]  # type: ignore[index]
+    matrix = np.arange(1, len(scenarios) + 1, dtype=float).reshape(
+        len(bonding_cases), len(angles)
+    )
+    topology_groups = np.repeat(
+        np.arange(len(bonding_cases), dtype=float)[:, np.newaxis], len(angles), axis=1
+    )
+
+    figure, axes = plt.subplots(
+        1,
+        2,
+        figsize=(12.0, 4.9),
+        gridspec_kw={"width_ratios": (1.7, 1.0)},
+        constrained_layout=True,
+    )
+    axes[0].imshow(
+        topology_groups,
+        cmap=ListedColormap(("#0072B2", "#D55E00", "#009E73", "#6A3D9A")),
+        vmin=-0.5,
+        vmax=3.5,
+        aspect="auto",
+    )
+    for row in range(matrix.shape[0]):
+        for column in range(matrix.shape[1]):
+            axes[0].text(
+                column,
+                row,
+                "#{:02.0f}".format(matrix[row, column]),
+                ha="center",
+                va="center",
+                color="white",
+                fontweight="bold",
+            )
+    axes[0].set_xticks(range(len(angles)), ["{:g}".format(value) for value in angles])
+    axes[0].set_yticks(
+        range(len(bonding_cases)), [str(case["label"]) for case in bonding_cases]
+    )
+    axes[0].set_xlabel("Phase-A switching angle [degrees]")
+    axes[0].set_title("24 scheduled cases")
+    axes[0].grid(False)
+
+    first_bonding = scenarios[: len(angles)]
+    axes[1].plot(
+        [scenario.switching_angle_deg for scenario in first_bonding],
+        [scenario.switching_time_s * 1e3 for scenario in first_bonding],
+        marker="o",
+        color="#D55E00",
+    )
+    axes[1].set_xlabel("Phase-A switching angle [degrees]")
+    axes[1].set_ylabel("Absolute breaker event time [ms]")
+    axes[1].set_title("Angle-to-time conversion at 50 Hz")
+    axes[1].text(
+        0.04,
+        0.96,
+        "Each column is repeated for\nall four bonding topologies.",
+        transform=axes[1].transAxes,
+        va="top",
+        bbox={"boxstyle": "round,pad=0.4", "facecolor": "#F4F6F7", "edgecolor": "#AAB7B8"},
+    )
+    figure.suptitle("Study 02 execution matrix — planned scenarios, not EMT results", fontsize=13)
+    figure.savefig(output, bbox_inches="tight")
+    plt.close(figure)
+    return output
+
+
 def generate_cable_design_figures(
     config: Mapping[str, object], destination: Path
 ) -> Dict[str, Path]:
@@ -173,4 +247,7 @@ def generate_cable_design_figures(
             config, output / "length_sensitivity.png"
         ),
         "bonding_matrix": plot_bonding_matrix(config, output / "bonding_matrix.png"),
+        "scenario_coverage": plot_cable_scenario_coverage(
+            config, output / "scenario_coverage.png"
+        ),
     }

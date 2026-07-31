@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 from pfemt.application import installation_report
+from pfemt.cable import cable_scenarios, export_cable_scenario_manifest
 from pfemt.config import load_yaml, validate_study_config
 from pfemt.errors import PFEMTError
 from pfemt.scenarios import export_manifest, point_on_wave_scenarios
@@ -87,7 +88,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(export_diagram(config))
         elif arguments.command == "manifest":
             destination = output_directory(config) / "scenario_manifest.csv"
-            print(export_manifest(point_on_wave_scenarios(config), destination))
+            if "cable" in config["network"]:
+                print(export_cable_scenario_manifest(cable_scenarios(config), destination))
+            else:
+                print(export_manifest(point_on_wave_scenarios(config), destination))
         elif arguments.command == "sensitivity":
             print(run_timestep_sensitivity(config))
         return 0

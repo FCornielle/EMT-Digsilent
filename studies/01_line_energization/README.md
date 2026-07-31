@@ -72,6 +72,15 @@ reviewable parameter classification is
 
 ![Parameter overview](../../docs/assets/01_parameter_overview.png)
 
+**How to read this figure.** The zero-sequence resistance and reactance are
+substantially higher than their positive-sequence values, while the
+zero-sequence susceptance is lower. This is expected because zero-sequence
+current uses the earth-return path rather than only the balanced phase
+conductors. The box on the lower right converts the same inputs into independent
+scale checks: a 285.6 ohm surge impedance, a 0.518 ms one-way travel time, and a
+0.657 kA first-order surge current. These values establish what arrival time and
+current order of magnitude should be visible before the EMT traces are trusted.
+
 ### 4.3 EMT simulation
 
 - Start time: -20 ms.
@@ -163,6 +172,14 @@ and absolute peak, phase, time, angle, source voltage, and line length.
 
 ![Point-on-wave sweep](../../docs/assets/01_point_on_wave_sweep.png)
 
+**How to read this figure.** The voltage KPI alternates between approximately
+2.249 and 2.257 pu, with the higher group at 30 + 60*n degrees. The current KPI
+has the opposite grouping, reaching 0.8656 kA at 0 + 60*n degrees. This repeating
+pattern follows balanced three-phase symmetry: shifting the phase-A reference by
+60 degrees changes which phase supplies the maximum absolute value. It also
+shows why the voltage-governing case cannot be selected from closing current
+alone.
+
 ### Step 10 — Compare with independent physical checks
 
 From the positive-sequence line inputs:
@@ -187,6 +204,15 @@ These are order-of-magnitude checks. The EMT response also contains the source
 impedance, phase coupling, losses, frequency dependence, and reflections.
 
 ![Travelling-wave detail](../../docs/assets/01_travelling_wave_detail.png)
+
+**How to read this figure.** The breaker closes at 0 ms, but the receiving-end
+voltage remains unchanged until the first wave reaches it close to the analytical
+0.518 ms marker. The abrupt steps and later packets are successive reflections
+between the open receiving end and the finite source impedance. At an open end,
+the voltage reflection has positive polarity and can approach twice the incident
+step; phase coupling, losses, and frequency-dependent propagation then separate
+and damp the phase responses. Agreement of the first arrival with the analytical
+marker is a direct physical check of the distributed-line model.
 
 ### Step 11 — Compare the regression reference
 
@@ -214,6 +240,13 @@ must not be described as the converged design peak.
 
 ![Time-step sensitivity](../../docs/assets/01_timestep_sensitivity.png)
 
+**How to read this figure.** Both reported peaks increase as the time step is
+reduced because coarse sampling misses part of the fast travelling-wave extrema.
+The right panel quantifies convergence rather than merely showing successful
+runs: the 2.5 us result differs from the 1.25 us reference by less than 0.1%,
+whereas the original 10 us baseline is still about 1% low. The figure therefore
+separates a stable regression case from a time-step-converged engineering peak.
+
 ## 6. Verified base-case result
 
 - Maximum voltage: **2.257009877 pu / 423.853395 kV phase-ground peak**.
@@ -226,7 +259,25 @@ for the 30-degree case is documented separately above.
 
 ![Worst-case waveforms](../../docs/assets/01_worst_case_waveforms.png)
 
+**How to read this figure.** Before the 30-degree closing event, the open line is
+de-energized and both plotted quantities are zero. Immediately after closing,
+high-frequency travelling-wave components dominate the receiving-end voltages
+and sending-end currents; their envelopes decay as line losses and the source
+impedance absorb energy, leaving the 50 Hz response increasingly visible. The
+largest absolute voltage is the negative phase-C excursion, which explains why
+the KPI is based on the maximum absolute value across all three phases rather
+than on phase A alone.
+
 ![All-angle overvoltage envelope](../../docs/assets/01_overvoltage_envelope.png)
+
+**How to read this figure.** Aligning all 12 cases to breaker closing reveals
+nearly overlapping families of traces, another consequence of three-phase
+symmetry. The first governing reflection packet rises above the dotted 2 pu
+lossless open-end reference and reaches about 2.257 pu; additional peaks appear
+as waves make repeated round trips. The 2 pu line is a physical reference, not a
+limit: source impedance, modal coupling, frequency dependence, and the use of
+the largest instantaneous phase magnitude explain the departures from the
+idealized single-step value.
 
 ## 7. Execution
 

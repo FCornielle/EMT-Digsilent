@@ -1,9 +1,10 @@
 from pathlib import Path
 
+import pandas as pd
 import pytest
 import yaml
 
-from pfemt.cable import cable_derived_quantities
+from pfemt.cable import cable_derived_quantities, cable_scenarios
 from pfemt.config import load_yaml
 
 
@@ -26,3 +27,16 @@ def test_cable_analytical_reference_matches_versioned_configuration() -> None:
         "one_way_travel_time_ms",
     ):
         assert actual[key] == pytest.approx(expected[key], rel=tolerance)
+
+
+def test_versioned_cable_scenario_manifest_matches_configuration() -> None:
+    root = Path(__file__).resolve().parents[2]
+    config = load_yaml(root / "studies/02_hv_cable_energization/configs/base.yaml")
+    manifest = pd.read_csv(
+        root / "studies/02_hv_cable_energization/parameters/scenario_manifest.csv"
+    )
+    scenarios = cable_scenarios(config)
+    assert manifest["scenario_id"].tolist() == [item.scenario_id for item in scenarios]
+    assert manifest["switching_time_s"].tolist() == pytest.approx(
+        [item.switching_time_s for item in scenarios]
+    )

@@ -2,12 +2,32 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Mapping
+import csv
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Dict, Iterable, List, Mapping
 
 import numpy as np
 import pandas as pd
 
 from pfemt.errors import ConfigurationError
+from pfemt.scenarios import switching_time
+
+
+@dataclass(frozen=True)
+class CableScenario:
+    """One deterministic cable-bonding and point-on-wave EMT scenario."""
+
+    scenario_id: str
+    bonding_id: str
+    bonding_label: str
+    switching_angle_deg: float
+    switching_time_s: float
+    grounded_sending: bool
+    grounded_receiving: bool
+    cross_bonded: bool
+    source_voltage_pu: float
+    cable_length_km: float
 
 
 def cable_derived_quantities(config: Mapping[str, object]) -> Dict[str, float]:
@@ -110,3 +130,60 @@ def cable_bonding_cases(config: Mapping[str, object]) -> List[Dict[str, object]]
     if len({item["id"] for item in normalized}) != len(normalized):
         raise ConfigurationError("Bonding case identifiers must be unique")
     return normalized
+
+
+def cable_scenarios(config: Mapping[str, object]) -> List[CableScenario]:
+    """Expand bonding topologies and switching angles into an auditable campaign."""
+    network = config["network"]  # type: ignore[index]
+    sweep = config["sweep"]  # type: ignore[index]
+    frequency_hz = float(network["frequency_hz"])  # type: ignore[index]
+    if frequency_hz <= 0.0:
+        raise ConfigurationError("network.frequency_hz must be positive")
+    base_time_s = float(sweep["base_switching_time_s"])  # type: ignore[index]
+    raw_angles = [float(value) for value in sweep["angles_deg"]]  # type: ignore[index]
+    angles = [value % 360.0 for value in raw_angles]
+    if not angles:
+        raise ConfigurationError("sweep.angles_deg must contain at least one angle")
+    if len(set(angles)) != len(angles):
+        raise ConfigurationError("Switching angles must be unique modulo 360 degrees")
+
+    cable = network["cable"]  # type: ignore[index]
+    source = network["source"]  # type: ignore[index]
+    scenarios = []
+    for bonding in cable_bonding_cases(config):
+        for angle in angles:
+            angle_token = (
+                "{:03d}".format(int(angle))
+                if angle.is_integer()
+                else "{:07.3f}".format(angle).rstrip("0").rstrip(".").replace(".", "p")
+            )
+            scenarios.append(
+                CableScenario(
+                    scenario_id="{}_pow_{}deg".format(bonding["id"], angle_token),
+                    bonding_id=str(bonding["id"]),
+                    bonding_label=str(bonding["label"]),
+                    switching_angle_deg=angle,
+                    switching_time_s=switching_time(base_time_s, angle, frequency_hz),
+                    grounded_sending=bool(bonding["grounded_sending"]),
+                    grounded_receiving=bool(bonding["grounded_receiving"]),
+                    cross_bonded=bool(bonding["cross_bonded"]),
+                    source_voltage_pu=float(source["voltage_pu"]),
+                    cable_length_km=float(cable["length_km"]),
+                )
+            )
+    return scenarios
+
+
+def export_cable_scenario_manifest(
+    scenarios: Iterable[CableScenario], destination: Path
+) -> Path:
+    """Write the cable scenario campaign as a stable, reviewable CSV manifest."""
+    output = Path(destination)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    rows = [asdict(scenario) for scenario in scenarios]
+    fieldnames = list(CableScenario.__dataclass_fields__.keys())
+    with output.open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    return output

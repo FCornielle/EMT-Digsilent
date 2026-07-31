@@ -74,11 +74,31 @@ instructions are in the
 
 ![Study 01 point-on-wave sweep](docs/assets/01_point_on_wave_sweep.png)
 
+The two repeating voltage/current groups come from balanced three-phase
+symmetry. Voltage is governed by 30 + 60*n degree closures, while current is
+governed by 0 + 60*n degrees; therefore maximum closing current is not a proxy
+for maximum receiving-end voltage.
+
 ![Study 01 worst-case waveforms](docs/assets/01_worst_case_waveforms.png)
+
+The 30-degree case shows the initially de-energized open line, the strong
+high-frequency wavefronts immediately after closing, and their decay toward the
+power-frequency response. The maximum is taken across absolute phase values, so
+the large negative phase-C excursion governs the reported 2.257 pu result.
 
 ![Study 01 travelling-wave detail](docs/assets/01_travelling_wave_detail.png)
 
+The receiving end first responds near the independently calculated 0.518 ms
+one-way travel time. Later steps are repeated open-end/source reflections; their
+timing is evidence that the result is produced by a distributed propagation
+model rather than by a lumped steady-state approximation.
+
 ![Study 01 time-step sensitivity](docs/assets/01_timestep_sensitivity.png)
+
+Peak voltage and current converge upward as the time step decreases. The 2.5 us
+case is within 0.1% of the 1.25 us reference, while the 10 us regression baseline
+underestimates both peaks by about 1%; a completed run is therefore not, by
+itself, evidence of numerical convergence.
 
 ## Study 02 — started 220 kV cable energization
 
@@ -109,13 +129,40 @@ assumptions, object/result contract, bonding scenarios, and completion gate are
 documented in the
 [Study 02 README](studies/02_hv_cable_energization/README.md).
 
+A read-only PowerFactory 2024 schema preflight now verifies the installed
+`TypCab`, `TypCabsys`, and `ElmCabsys` attribute names before the geometric model
+builder is allowed to write objects. This keeps the next API stage tied to the
+installed version rather than to guessed field names.
+
 ### Initial figures
 
 ![Study 02 cable parameter basis](docs/assets/02_cable_parameter_overview.png)
 
+The sequence bars show that earth-return behavior differs materially from the
+positive-sequence path, while the summary box converts the 40 km input data into
+charging-current, stored-energy, surge-impedance, and travel-time scale checks.
+These are design-basis calculations and are deliberately labelled as non-EMT
+results.
+
 ![Study 02 bonding matrix](docs/assets/02_cable_bonding_matrix.png)
 
+Each row is a physically different metallic-screen topology. The matrix makes
+the grounded ends and cross-bonded sections explicit so that a result can later
+be traced to topology instead of being attributed only to a case number.
+
 ![Study 02 cable length sensitivity](docs/assets/02_cable_length_sensitivity.png)
+
+Charging current and electric-field energy increase linearly with cable length
+because total shunt capacitance is proportional to length in this first-order
+check. The highlighted 40 km point identifies the base case; the plot does not
+predict switching peaks or screen stress.
+
+![Study 02 scenario coverage](docs/assets/02_cable_scenario_coverage.png)
+
+The left panel assigns all 24 bonding-by-angle cases stable sequence numbers.
+The right panel verifies the 50 Hz angle-to-event-time conversion from 20.0 to
+28.33 ms. The colors separate bonding topologies only and do not represent EMT
+severity.
 
 ## Common engineering workflow
 
@@ -164,7 +211,11 @@ interactive `ComPython` objects as explained in the Study 01 README.
 
 ```powershell
 pfemt validate studies/02_hv_cable_energization/configs/base.yaml
+pfemt manifest studies/02_hv_cable_energization/configs/base.yaml
 python studies/02_hv_cable_energization/scripts/generate_design_figures.py
+python studies/02_hv_cable_energization/scripts/generate_scenario_manifest.py
+python studies/02_hv_cable_energization/scripts/inspect_installed_cable_schema.py `
+  --output studies/02_hv_cable_energization/outputs/powerfactory_cable_schema.json
 ```
 
 The Study 02 README explicitly lists what remains before any EMT result can be
