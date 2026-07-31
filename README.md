@@ -2,158 +2,139 @@
 
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776AB.svg)](https://www.python.org/)
 [![PowerFactory 2024](https://img.shields.io/badge/PowerFactory-2024-004B87.svg)](https://www.digsilent.de/)
-[![Tests](https://img.shields.io/badge/tests-passing-2E8B57.svg)](#verification-and-quality-controls)
+[![Tests](https://img.shields.io/badge/tests-passing-2E8B57.svg)](#verification)
 
-This repository is an educational, reproducible framework for electromagnetic
-transient (EMT) studies in DIgSILENT PowerFactory. Each study is treated as an
-engineering case: the question, assumptions, model, events, monitored signals,
-acceptance checks, figures, and regression reference are versioned together.
+A reproducible, engineering-oriented collection of electromagnetic transient
+(EMT) studies automated through the DIgSILENT PowerFactory Python API. Every
+case is treated as a small software project: question, assumptions, native
+PowerFactory model, scenario matrix, result contract, validation, figures, and
+technical interpretation are kept together.
 
-> **Current scope:** Study 01, 230 kV overhead-line energization, is fully
-> implemented and verified. The remaining industry cases are explicitly marked
-> as planned in the [roadmap](docs/roadmap.md); this repository does not present
-> unimplemented studies as completed work.
+The repository distinguishes four maturity levels:
 
-All future cases follow the same
-[15-step engineering methodology](docs/case_methodology.md).
+- **Verified baseline:** PowerFactory EMT results and regression evidence exist.
+- **Implemented:** the complete model/workflow exists but may not have a frozen
+  cross-version baseline.
+- **Engineering basis:** inputs, methodology, analytical checks, and starter
+  automation exist; EMT results are not claimed.
+- **Planned:** the implementation contract exists without fabricated results.
 
-## Study 01 — 230 kV line energization
+## Study catalogue
 
-### Engineering question
+| ID | Study | Primary decision metric | Status |
+|---:|---|---|---|
+| 01 | [230 kV line energization and point on wave](studies/01_line_energization/README.md) | open-end peak voltage | **Verified baseline** |
+| 02 | [220 kV cable energization and sheath bonding](studies/02_hv_cable_energization/README.md) | core/screen voltage and current | **Engineering basis** |
+| 03 | [Transformer energization and inrush](studies/03_transformer_energization/README.md) | inrush, flux, harmonics | Planned |
+| 04 | [Capacitor-bank energization](studies/04_capacitor_bank_energization/README.md) | inrush peak/frequency and duty | Planned |
+| 05 | [Transformer saturation sensitivity](studies/05_transformer_saturation_sensitivity/README.md) | residual-flux/inrush envelope | Planned |
+| 06 | [Circuit-breaker TRV](studies/06_circuit_breaker_trv/README.md) | peak TRV and RRRV | Planned |
+| 07 | [Faults with variable clearing](studies/07_faults_variable_clearing/README.md) | peak current, DC offset, I²t | Planned |
+| 08 | [Lightning and travelling waves](studies/08_lightning_travelling_waves/README.md) | insulation stress and arrester energy | Planned |
+| 09 | [Detailed grid-following/grid-forming IBR](studies/09_detailed_ibr_models/README.md) | control/current-limit response | Planned |
+| 10 | [Instantaneous protection](studies/10_instantaneous_protection/README.md) | pickup, trip, selectivity | Planned |
+| 11 | [Parametric sweeps and Monte Carlo](studies/11_parametric_monte_carlo/README.md) | ranked risk distribution | Foundation implemented |
+| 12 | [EMT–EMT and RMS–EMT co-simulation](studies/12_emt_cosimulation/README.md) | interface accuracy and runtime | Planned |
 
-What is the maximum open-end phase-ground voltage when a 150 km, 230 kV line is
-energized at different points on the voltage wave, and which breaker-closing
-angle produces the most severe duty?
+All cases follow the same
+[15-step engineering methodology](docs/case_methodology.md) and
+[README review contract](docs/study_readme_template.md).
 
-This question appears in insulation-coordination screening, controlled-switching
-specification, reactor and surge-arrester assessment, and commissioning studies.
+## Study 01 — verified 230 kV line energization
 
-### PowerFactory model
+### Question and model
 
-The Python builder creates the electrical objects and their linked PowerFactory
-`IntGrfnet` representation; it does not redraw the one-line with Matplotlib.
-Run
-[`export_diagram_inside_powerfactory.py`](studies/01_line_energization/scripts/export_diagram_inside_powerfactory.py)
-from an interactive PowerFactory `ComPython` object to export the active
-`SetDeskpage` through `ComWr`. The native PNG is written to
-`studies/01_line_energization/outputs/figures/powerfactory_single_line.png`.
-
-```text
-Thevenin grid -- sending bus -- three-pole breaker -- distributed EMT line -- open end
-```
-
-| Item | Base-case value | PowerFactory object/model |
-|---|---:|---|
-| System voltage | 230 kV line-line RMS | `ElmTerm` |
-| Frequency | 50 Hz | network nominal frequency |
-| Source strength | 10,000 MVA, R/X = 0.10 | `ElmXnet` |
-| Line length | 150 km | `ElmLne` |
-| Line representation | distributed, frequency-dependent | `i_dist=1`, `i_model=1` |
-| EMT time step | 10 us | `ComSim` |
-| Simulation window | -20 ms to 120 ms | `ComInc`/`ComSim` |
-| Point-on-wave cases | 0 to 330 degrees in 30-degree steps | `EvtSwitch` |
-
-![Input parameters and analytical checks](docs/assets/01_parameter_overview.png)
-
-### Methodology
-
-1. **Define the decision and KPI.** The KPI is the largest absolute
-   receiving-end phase-ground voltage after breaker closing, expressed on the
-   nominal phase-ground peak base.
-2. **Version the input basis.** Source, line, simulation, event, and result
-   settings are stored in
-   [`base.yaml`](studies/01_line_energization/configs/base.yaml), while every
-   engineering assumption is classified in the parameter register.
-3. **Build the PowerFactory model through the API.** The builder creates the
-   project, grid, terminals, cubicles, source, breaker, line type, line, Study
-   Case, commands, events folder, result file, and native single-line diagram.
-4. **Configure the EMT line.** The example calls
-   `AreDistParamsPossible()` and `FitParams(0, 1)` and stops on a non-zero return
-   code. Project work should replace sequence inputs with validated geometry.
-5. **Initialize the network.** `ComInc` uses instantaneous EMT mode and the
-   versioned initial-condition settings.
-6. **Apply the event.** One three-pole close event is placed at the absolute
-   time corresponding to each requested phase-A electrical angle.
-7. **Run the sweep.** `ComSim` executes 12 deterministic scenarios. Each event
-   time and parameter set is written to the scenario manifest.
-8. **Record instantaneous quantities.** Receiving-end `Vabc` and sending-end
-   `Iabc` are registered in `ElmRes` using unit-specific variable identifiers.
-9. **Export and normalize.** `ComRes` writes the raw CSV. pandas maps the
-   PowerFactory headers to a stable, unit-explicit schema.
-10. **Calculate and rank KPIs.** Python calculates voltage/current peaks,
-    phase, time, angle ranking, and first-order travelling-wave checks.
-11. **Verify numerical repeatability.** The sweep is compared automatically
-    with the versioned PowerFactory 2024 SP2 baseline and the worst angle is run
-    at 20, 10, 5, 2.5, and 1.25 us.
-12. **Interpret the result.** The example result is a workflow benchmark, not a
-    project insulation withstand criterion.
-
-The voltage base is:
+What is the maximum open-end phase-ground voltage when a 150 km, 230 kV
+overhead line is energized at different points on the voltage wave?
 
 ```text
-Vbase,phase-ground,peak = Vnominal,line-line,RMS * sqrt(2/3)
-                       = 187.79 kV
+Thevenin source -> sending bus -> three-pole breaker
+                 -> distributed frequency-dependent EMT line -> open end
 ```
 
-### Verified results
+The API creates the electrical network and a linked native PowerFactory
+`IntGrfnet`; Matplotlib is used only for result figures.
 
-The 12-case PowerFactory run produced:
+### Verified PowerFactory results
 
-- maximum voltage: **2.2570 pu / 423.85 kV phase-ground peak**;
-- maximum-voltage angles: **30, 90, 150, 210, 270, and 330 degrees**;
-- maximum closing current: **0.8656 kA peak**;
-- maximum-current angles: **0, 60, 120, 180, 240, and 300 degrees**.
+| KPI | Result |
+|---|---:|
+| Maximum receiving-end voltage | **2.2570 pu / 423.85 kV peak** |
+| Governing voltage angles | **30, 90, 150, 210, 270, 330 degrees** |
+| Maximum sending-end current | **0.865571 kA peak** |
+| Governing current angles | **0, 60, 120, 180, 240, 300 degrees** |
+| Point-on-wave cases | **12** |
+| EMT time-step verification | **20 to 1.25 us** |
 
-The alternating 60-degree groups are consistent with a balanced three-phase
-system: shifting the phase-A closing reference by 60 degrees exchanges the
-phase that experiences the largest instantaneous voltage or current.
+The full assumptions, object names, methodology, result variables, and rerun
+instructions are in the
+[Study 01 README](studies/01_line_energization/README.md).
 
-![Point-on-wave voltage and current sweep](docs/assets/01_point_on_wave_sweep.png)
+### Key figures
 
-### Waveform interpretation
+![Study 01 point-on-wave sweep](docs/assets/01_point_on_wave_sweep.png)
 
-The worst scenario is examined at three levels. The complete waveform shows the
-pre-event steady state, closing instant, initial travelling-wave response, and
-later reflections.
+![Study 01 worst-case waveforms](docs/assets/01_worst_case_waveforms.png)
 
-![Worst-case instantaneous waveforms](docs/assets/01_worst_case_waveforms.png)
+![Study 01 travelling-wave detail](docs/assets/01_travelling_wave_detail.png)
 
-Aligning all scenarios to their own closing instant makes the point-on-wave
-dependence visible without confusing it with the absolute event-time offset.
+![Study 01 time-step sensitivity](docs/assets/01_timestep_sensitivity.png)
 
-![All-scenario overvoltage envelope](docs/assets/01_overvoltage_envelope.png)
+## Study 02 — started 220 kV cable energization
 
-From the positive-sequence X and B inputs, the first-order analytical check gives
-approximately 286 ohm surge impedance and 0.519 ms one-way travel time. The
-simulation is not expected to equal the ideal lossless 2 pu open-end step because
-it includes phase coupling, losses, source impedance, frequency dependence, and
-successive reflections.
+### Question and target model
 
-![Travelling-wave detail](docs/assets/01_travelling_wave_detail.png)
+How do breaker point on wave and metallic-screen bonding affect the transient
+core voltage, screen voltage, conductor current, and screen current of a 40 km
+220 kV XLPE cable energized with an open receiving end?
 
-### Numerical verification
+The target PowerFactory model uses geometric `TypCab`/`TypCabsys` data, a
+distributed frequency-dependent phase-domain representation, and explicit
+screen grounding. A sequence-only overhead-line surrogate will not be presented
+as the final cable model.
 
-The post-processor compares the calculated extrema against the versioned
-reference in
-[`powerfactory_2024_sp2.yaml`](studies/01_line_energization/expected/powerfactory_2024_sp2.yaml).
-The default relative tolerances are 0.5% for voltage and 1.0% for current.
+### Current engineering basis
 
-The time-step study uses the worst switching angle. Its purpose is to quantify
-peak-value sensitivity, not merely to show that all simulations complete. The
-10 us baseline is retained for regression continuity; acceptance of a formal
-design peak must be based on the finer-step convergence trend.
+| Quantity | First-order value |
+|---|---:|
+| Total capacitance | **9.20 uF/phase** |
+| Steady-state charging current | **0.367 kA/phase** |
+| Three-phase stored-energy scale | **445.28 kJ** |
+| Surge impedance | **39.01 ohm** |
+| One-way travel time | **0.359 ms** |
+| Samples per travel time at 2.5 us | **approximately 144** |
 
-At 30 degrees, the 1.25 us run produced **2.2783 pu** and **0.7786 kA**. The
-2.5 us result differs by only **0.036% in voltage** and **0.056% in current**,
-whereas the 10 us baseline is approximately **0.935% lower in voltage** and
-**0.984% lower in current**. This example therefore demonstrates why a
-successful run is not the same as a converged engineering result.
+These are analytical scale checks, not EMT results. The exact status,
+assumptions, object/result contract, bonding scenarios, and completion gate are
+documented in the
+[Study 02 README](studies/02_hv_cable_energization/README.md).
 
-![EMT time-step sensitivity](docs/assets/01_timestep_sensitivity.png)
+### Initial figures
 
-## Reproduce the study
+![Study 02 cable parameter basis](docs/assets/02_cable_parameter_overview.png)
 
-### Install the Python package
+![Study 02 bonding matrix](docs/assets/02_cable_bonding_matrix.png)
+
+![Study 02 cable length sensitivity](docs/assets/02_cable_length_sensitivity.png)
+
+## Common engineering workflow
+
+1. Define the decision, KPI, units, bases, and acceptance-source provenance.
+2. Version project data and classify every input by maturity.
+3. Build or update named PowerFactory objects through an idempotent API builder.
+4. Generate the linked native PowerFactory single-line diagram.
+5. Configure initial conditions and deterministic events.
+6. Run scenario sweeps and preserve a machine-readable manifest.
+7. Export instantaneous channels through `ElmRes` and `ComRes`.
+8. Normalize CSV data with pandas and calculate KPIs.
+9. Compare against analytical checks and compact regression references.
+10. Verify time step, model bandwidth, and governing uncertainties.
+11. Generate native diagrams and multiple reviewable result figures.
+12. State limitations before using an example in an equipment decision.
+
+## Quick start
+
+### Install
 
 ```powershell
 cd powerfactory-emt-industrial-studies
@@ -162,103 +143,81 @@ py -3.9 -m venv .venv
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
 pfemt doctor
-pfemt validate studies/01_line_energization/configs/base.yaml
 ```
 
-Use the Python version shipped in the matching
-`PowerFactory <version>/Python/<version>` directory.
+Use the Python version matching the installed PowerFactory Python module.
 
-### Recommended first run: PowerFactory ComPython
-
-1. Open PowerFactory.
-2. Create a **Python Script (`ComPython`)** object.
-3. Select
-   `studies/01_line_energization/scripts/build_model_inside_powerfactory.py`
-   as the external script and run it once.
-4. Run `export_diagram_inside_powerfactory.py` while the generated diagram is
-   available on the Graphics Board.
-5. Run `run_sweep_inside_powerfactory.py`.
-6. Run `run_timestep_sensitivity_inside_powerfactory.py`.
-7. From a terminal, run `python scripts/analyse_results.py` in the study folder.
-
-### Terminal workflow
-
-The same model and sweep can be executed in external mode:
+### Reproduce Study 01
 
 ```powershell
+pfemt validate studies/01_line_energization/configs/base.yaml
 pfemt build studies/01_line_energization/configs/base.yaml
 pfemt sweep studies/01_line_energization/configs/base.yaml
 pfemt sensitivity studies/01_line_energization/configs/base.yaml
 pfemt analyse studies/01_line_energization/configs/base.yaml
 ```
 
-If a specific PowerFactory user is required, provide it through environment
-variables rather than a committed YAML file:
+For the native diagram, run the supplied `*_inside_powerfactory.py` scripts from
+interactive `ComPython` objects as explained in the Study 01 README.
+
+### Reproduce the current Study 02 design basis
 
 ```powershell
-$env:PFEMT_USERNAME = "powerfactory_user"
-$env:PFEMT_PASSWORD = "temporary_secret"
+pfemt validate studies/02_hv_cable_energization/configs/base.yaml
+python studies/02_hv_cable_energization/scripts/generate_design_figures.py
 ```
 
-### Generated output contract
-
-`studies/01_line_energization/outputs/` contains:
-
-- raw PowerFactory CSV files;
-- normalized unit-explicit CSV files;
-- scenario manifest and run metadata;
-- per-scenario JSON metrics and Markdown reports;
-- ranked sweep summary;
-- analytical and baseline-comparison JSON files;
-- time-step sensitivity CSV;
-- native PowerFactory diagram and analysis figures.
-
-Generated outputs are ignored by Git. Curated figures and compact numerical
-references are copied to `docs/assets/` and `expected/` for review.
+The Study 02 README explicitly lists what remains before any EMT result can be
+published.
 
 ## Repository structure
 
 ```text
 .
-|-- config/                         connection profiles without secrets
-|-- docs/                           architecture, references, roadmap, figures
-|-- src/pfemt/                      reusable automation package
-|   |-- builders/                   PowerFactory API model builders
-|   |-- diagram.py                  native IntGrfnet generation/export
-|   |-- events.py                   switching-event configuration
-|   |-- results.py                  ElmRes registration and ComRes export
-|   |-- metrics.py                  EMT KPIs and analytical checks
-|   |-- plotting.py                 reproducible educational figures
-|   `-- workflows.py                end-to-end orchestration
+|-- docs/                     methodology, architecture, references, figures
+|-- src/pfemt/                reusable PowerFactory and analysis modules
 |-- studies/
-|   `-- 01_line_energization/
-|       |-- configs/                executable study definition
-|       |-- parameters/             assumptions and parameter basis
-|       |-- expected/               regression references
-|       |-- scripts/                ComPython entry points
-|       `-- outputs/                generated and ignored by Git
-`-- tests/                          unit, regression, and integration checks
+|   |-- 01_line_energization/ complete verified vertical slice
+|   |-- 02_hv_cable_energization/ engineering basis in progress
+|   `-- 03...12/             study-specific implementation contracts
+|-- tests/                    unit, regression, plotting, integration tests
+`-- config/                   connection examples without secrets
 ```
 
-## Verification and quality controls
+Generated raw/normalized outputs remain outside Git. Compact numerical
+references and curated figures are versioned for review.
 
-- Every PowerFactory command return code is checked.
-- Object lookup uses stable names and explicit class suffixes.
-- Raw exports are preserved; normalized files are derived artifacts.
-- Result variables and physical units are versioned as a schema.
-- Synthetic data appear only in unit tests and are never presented as study results.
-- The native diagram is built from linked `IntGrf` objects in PowerFactory.
-- The regression comparison fails when voltage or current leaves its tolerance.
-- The time-step study quantifies the numerical sensitivity of the reported peak.
-- `pytest` and `ruff check .` are required before publication.
+## Verification
 
-## Engineering boundary
+- PowerFactory command return codes are checked.
+- Stable names and explicit object classes are used.
+- Raw CSV files are preserved before pandas normalization.
+- Units and result-variable identifiers are versioned per study.
+- Synthetic data are restricted to unit tests and are never presented as study
+  results.
+- Native network diagrams remain linked to PowerFactory electrical objects.
+- Analytical references are labelled separately from EMT baselines.
+- Planned cases contain no fabricated KPI values.
 
-This is an industrial-style educational example, not a design certificate. A
-project deliverable must use validated tower/conductor/earth-wire geometry, soil
-resistivity, line transposition, breaker pole scatter, trapped charge, source
-uncertainty, arrester data, equipment withstand curves, and the applicable
-insulation-coordination standard.
+Run the complete offline quality suite with:
 
-The source code is released under the [MIT terms](LICENSE). Citation metadata
-are provided in [CITATION.cff](CITATION.cff).
+```powershell
+pytest
+ruff check .
+```
+
+## Documentation
+
+- [Architecture](docs/architecture.md)
+- [Standard case methodology](docs/case_methodology.md)
+- [Study README template](docs/study_readme_template.md)
+- [Technical references](docs/references.md)
+- [Implementation roadmap](docs/roadmap.md)
+- [Contribution guide](CONTRIBUTING.md)
+
+## Engineering-use boundary
+
+This repository is an educational and automation reference. Project decisions
+require validated geometry and equipment data, reviewed model fidelity,
+appropriate operating scenarios, numerical convergence, independent checking,
+and the applicable utility/manufacturer/standard acceptance criteria.

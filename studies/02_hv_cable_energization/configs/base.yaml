@@ -1,0 +1,85 @@
+study:
+  id: hv_cable_energization_220kv
+  case_number: 2
+  title: 220 kV XLPE cable energization and sheath bonding
+  owner: Fernando Cornielle
+  status: engineering_basis
+
+connection:
+  mode: external
+  home:
+  username:
+  password:
+  command_line:
+
+powerfactory:
+  project: PFEMT_02_HV_Cable_Energization_220kV
+  grid: GRID_220KV_CABLE
+  study_case: EMT - Cable Energization and Bonding
+
+network:
+  nominal_voltage_kv: 220.0
+  frequency_hz: 50.0
+  source:
+    voltage_pu: 1.0
+    short_circuit_mva: 8000.0
+    r_over_x: 0.10
+  cable:
+    type_name: XLPE_220KV_1200CU_EXAMPLE
+    system_type_name: CABLE_SYSTEM_220KV_EXPLICIT_SHEATH
+    length_km: 40.0
+    rated_current_ka: 1.0
+    core_area_mm2: 1200.0
+    sheath_area_mm2: 185.0
+    burial_depth_m: 1.5
+    phase_spacing_m: 0.35
+    soil_resistivity_ohm_m: 100.0
+    electrical:
+      r1_ohm_per_km: 0.024
+      r0_ohm_per_km: 0.180
+      inductance_mh_per_km: 0.350
+      inductance0_mh_per_km: 0.650
+      capacitance_uf_per_km: 0.230
+      capacitance0_uf_per_km: 0.160
+    emt_model:
+      representation: distributed_frequency_dependent_phase_domain
+      fit_frequency_min_hz: 10.0
+      fit_frequency_max_hz: 20000.0
+      main_transient_frequency_hz: 2000.0
+
+bonding_cases:
+  - id: isolated
+    label: Isolated screen
+    grounded_sending: false
+    grounded_receiving: false
+    cross_bonded: false
+  - id: single_point
+    label: Single-point bonded
+    grounded_sending: true
+    grounded_receiving: false
+    cross_bonded: false
+  - id: both_ends
+    label: Bonded at both ends
+    grounded_sending: true
+    grounded_receiving: true
+    cross_bonded: false
+  - id: cross_bonded
+    label: Cross-bonded
+    grounded_sending: true
+    grounded_receiving: true
+    cross_bonded: true
+
+sweep:
+  base_switching_time_s: 0.020
+  angles_deg: [0, 30, 60, 90, 120, 150]
+
+simulation:
+  start_s: -0.020
+  stop_s: 0.120
+  step_s: 0.0000025
+  output_step_s: 0.0000025
+  mode: instantaneous_emt
+  mode_code: ins
+
+outputs:
+  directory: ../outputs

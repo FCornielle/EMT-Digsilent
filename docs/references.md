@@ -19,6 +19,9 @@ the installed PowerFactory version when a web page and local manual differ.
     frequency-dependent parameters.
   - `SetDesktop.Show()` and `WriteWMF()`.
   - `ComWr` graphic export to PNG/SVG/PDF and other formats.
+- `C:\Program Files\DIgSILENT\PowerFactory 2024\Help\TechRef\TechRef_CableSystem.pdf`
+  - Installed cable-system technical reference to be used when the Study 02
+    `TypCab`/`TypCabsys` builder attributes are implemented and reviewed.
 
 ## Official DIgSILENT knowledge base
 
@@ -36,6 +39,10 @@ the installed PowerFactory version when a web page and local manual differ.
 - [Improve EMT simulation performance](https://www.digsilent.de/en/faq-reader-powerfactory/how-can-you-speed-up-improve-the-performance-of-emt-simulations.html)
 - [Internal-solver EMT–EMT and RMS–EMT co-simulation example](https://www.digsilent.de/en/faq-reader-powerfactory/do-you-have-an-example-for-the-internal-solver-co-simulation-emt-emt-or-rms-emt.html)
 - [Line energization with a distributed model](https://www.digsilent.de/index.php/en/faq-reader-powerfactory/how-do-you-model-the-line-energisation-of-a-bi-phase-system-using-a-distributed-parameter-line-model.html)
+- [PowerFactory overhead-line and cable modelling objects](https://www.digsilent.de/en/faq-reader-powerfactory/how-do-you-model-overhead-lines-and-cables-in-powerfactory.html)
+- [Detailed cable systems using geometric data and explicit sheaths](https://www.digsilent.de/en/faq-reader-powerfactory/how-do-you-model-cable-systems-in-detail-for-the-harmonic-analysis.html)
+- [Cable screen bonding alternatives](https://www.digsilent.de/en/faq-reader-powerfactory/how-do-you-model-the-bonding-of-cables-isolated-single-and-double-bonded.html)
+- [Cable core/screen voltage and current profiles with Python](https://www.digsilent.de/en/faq-reader-powerfactory/do-you-have-a-python-script-to-calculate-the-voltage-and-current-in-a-line-as-function-of-distance.html)
 
 ## Interpretation
 

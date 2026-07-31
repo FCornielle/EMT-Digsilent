@@ -1,0 +1,14 @@
+parameter,value,unit,classification,engineering_use
+nominal_voltage,220,kV line-line RMS,example,system voltage base
+frequency,50,Hz,example,source and charging-current calculation
+source_short_circuit_power,8000,MVA,example,Thevenin source strength
+cable_length,40,km,example,base energization case
+core_area,1200,mm2,example,target TypCab geometry
+sheath_area,185,mm2,example,target explicit metallic screen
+burial_depth,1.5,m,assumed,target cable-system geometry
+phase_spacing,0.35,m,assumed,target flat formation
+soil_resistivity,100,ohm m,assumed,earth-return calculation
+positive_sequence_resistance,0.024,ohm/km,example,analytical screening only
+positive_sequence_inductance,0.350,mH/km,example,analytical screening only
+core_screen_capacitance,0.230,uF/km,example,charging current and energy
+emt_time_step,2.5,us,initial numerical choice,requires convergence study
