@@ -1,4 +1,4 @@
-"""Analyse raw PowerFactory CSV files without consuming a PowerFactory licence."""
+"""Analyse raw PowerFactory CSV files with pandas and generate educational outputs."""
 
 from __future__ import annotations
 
@@ -15,4 +15,3 @@ from pfemt.workflows import analyse_sweep  # noqa: E402
 
 configuration = load_yaml(REPOSITORY / "studies/01_line_energization/configs/base.yaml")
 print(analyse_sweep(configuration))
-

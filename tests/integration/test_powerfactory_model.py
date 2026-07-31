@@ -1,9 +1,10 @@
-"""Licensed integration smoke test.
+"""PowerFactory integration smoke test.
 
 Run explicitly on a workstation with PowerFactory open:
 PFEMT_RUN_INTEGRATION=1 pytest -m powerfactory
 """
 
+import gc
 import os
 from pathlib import Path
 
@@ -18,7 +19,7 @@ pytestmark = pytest.mark.powerfactory
 
 @pytest.mark.skipif(
     os.environ.get("PFEMT_RUN_INTEGRATION") != "1",
-    reason="requires an interactive PowerFactory EMT licence",
+    reason="requires explicit PowerFactory integration opt-in",
 )
 def test_line_energization_model_builds() -> None:
     root = Path(__file__).resolve().parents[2]
@@ -28,9 +29,16 @@ def test_line_energization_model_builds() -> None:
         "external",
     )
     app = connect(config)
-    objects = build(config, app)
-    assert app.LicenceHasModule("stabemt") == 1
-    assert objects["line"].AreDistParamsPossible() == 0
-    assert objects["line"].i_dist == 1
-    assert objects["line"].i_model == 1
-    assert objects["study_case"].loc_name == config["powerfactory"]["study_case"]
+    objects = {}
+    try:
+        objects = build(config, app)
+        assert objects["line"].AreDistParamsPossible() == 0
+        assert objects["line"].i_dist == 1
+        assert objects["line"].i_model == 1
+        assert objects["study_case"].loc_name == config["powerfactory"]["study_case"]
+        assert objects["diagram"].loc_name == "EMT Line Energization 230 kV"
+        assert len(objects["diagram"].GetContents("*.IntGrf")) == 6
+    finally:
+        objects.clear()
+        del app
+        gc.collect()

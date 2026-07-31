@@ -10,5 +10,4 @@ line,B1,3.80,uS_per_km,example,Representative overhead-line sequence input
 line,R0,0.230,ohm_per_km,example,Representative overhead-line sequence input
 line,X0,0.980,ohm_per_km,example,Representative overhead-line sequence input
 line,B0,2.10,uS_per_km,example,Representative overhead-line sequence input
-simulation,time_step,10,us,screening,Must be justified against highest relevant frequency
-
+simulation,time_step,10,us,base_case,Compared against 20 us 5 us 2.5 us and 1.25 us in the automated sensitivity

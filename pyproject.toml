@@ -45,7 +45,7 @@ where = ["src"]
 addopts = "-ra --strict-markers"
 testpaths = ["tests"]
 markers = [
-  "powerfactory: requires an installed, running and licensed PowerFactory application"
+  "powerfactory: runs against an installed PowerFactory application"
 ]
 
 [tool.ruff]

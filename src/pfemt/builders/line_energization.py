@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Mapping
 
+from pfemt.diagram import ensure_line_energization_diagram
 from pfemt.errors import PowerFactoryExecutionError
 from pfemt.pfapi import create_or_get, set_attribute
 
@@ -191,6 +192,7 @@ def build_line_energization_model(app: Any, config: Mapping[str, Any]) -> Dict[s
                     pf_config["study_case"],
                 )
             )
+    diagram = ensure_line_energization_diagram(app, grid)
     writer = getattr(project, "WriteChangesToDb", None)
     if callable(writer):
         writer()
@@ -204,5 +206,6 @@ def build_line_energization_model(app: Any, config: Mapping[str, Any]) -> Dict[s
         "breaker": breaker,
         "line": line,
         "line_type": line_type,
+        "diagram": diagram,
         **study,
     }

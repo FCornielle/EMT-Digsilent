@@ -11,10 +11,16 @@ from typing import Optional, Sequence
 
 from pfemt.application import installation_report
 from pfemt.config import load_yaml, validate_study_config
-from pfemt.diagram import plot_line_energization_diagram
 from pfemt.errors import PFEMTError
 from pfemt.scenarios import export_manifest, point_on_wave_scenarios
-from pfemt.workflows import analyse_sweep, build, output_directory, run_point_on_wave_sweep
+from pfemt.workflows import (
+    analyse_sweep,
+    build,
+    export_diagram,
+    output_directory,
+    run_point_on_wave_sweep,
+    run_timestep_sensitivity,
+)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -32,8 +38,9 @@ def _parser() -> argparse.ArgumentParser:
         ("build", "Build the PowerFactory project through the API"),
         ("sweep", "Run the complete point-on-wave sweep"),
         ("analyse", "Analyse all exported sweep CSV files"),
-        ("diagram", "Render the configuration-driven one-line diagram"),
+        ("diagram", "Export the native PowerFactory one-line diagram"),
         ("manifest", "Generate the deterministic scenario manifest"),
+        ("sensitivity", "Run the configured EMT time-step sensitivity"),
     ):
         command = subcommands.add_parser(name, help=help_text)
         command.add_argument("config", type=Path)
@@ -77,11 +84,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         elif arguments.command == "analyse":
             print(analyse_sweep(config))
         elif arguments.command == "diagram":
-            destination = output_directory(config) / "figures" / "single_line_diagram.png"
-            print(plot_line_energization_diagram(config, destination))
+            print(export_diagram(config))
         elif arguments.command == "manifest":
             destination = output_directory(config) / "scenario_manifest.csv"
             print(export_manifest(point_on_wave_scenarios(config), destination))
+        elif arguments.command == "sensitivity":
+            print(run_timestep_sensitivity(config))
         return 0
     except (PFEMTError, KeyError, ValueError) as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
@@ -90,4 +98,3 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

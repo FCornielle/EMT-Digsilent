@@ -14,7 +14,7 @@
 ```text
 study YAML
    │
-   ├── model builder ── PowerFactory project / Study Case
+   ├── model builder ── PowerFactory project / Study Case / IntGrfnet diagram
    │                         │
    ├── scenario manifest     ├── ComInc (EMT initial conditions)
    │                         ├── EvtSwitch
@@ -25,12 +25,21 @@ study YAML
                                           │
                          pandas normalization
                                           │
-                    metrics ── figures ── report
+             analytical checks ── metrics ── figures ── report
 ```
 
 The only modules importing `powerfactory` are the runtime connection helpers.
 Scenario generation, metrics, plotting and reporting can therefore run on CI
-without a PowerFactory licence.
+without opening the simulation application.
+
+## Diagram contract
+
+The electrical model and its single-line diagram are separate PowerFactory
+objects linked by `IntGrf.pDataObj`. The builder first runs `ComSgllayout` to
+insert graphical representations and then applies deterministic horizontal
+coordinates. `ComWr` exports the active `SetDeskpage` from the interactive
+Graphics Board. Matplotlib is used for result plots only; it does not redraw the
+PowerFactory network diagram.
 
 ## Object naming
 

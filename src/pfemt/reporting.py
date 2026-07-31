@@ -42,66 +42,75 @@ def line_energization_report(
     lines = [
         "# {}".format(study["title"]),  # type: ignore[index]
         "",
-        "> Reporte generado automáticamente. Los valores son válidos únicamente para",
-        "> la versión del modelo, parámetros y escenarios registrados en este caso.",
+        "> Automatically generated engineering report. Values are valid only for",
+        "> the recorded model version, parameters, and scenario.",
         "",
-        "## Resumen ejecutivo",
+        "## Executive summary",
         "",
-        "- Sobretensión máxima: **{:.3f} pu** ({:.2f} kV pico fase-tierra).".format(
+        "- Maximum overvoltage: **{:.3f} pu** ({:.2f} kV phase-ground peak).".format(
             float(metrics["voltage_peak_pu"]), float(metrics["voltage_kv_peak"])
         ),
-        "- Instante del pico de tensión: **{:.6f} s**.".format(
+        "- Voltage-peak time: **{:.6f} s**.".format(
             float(metrics["voltage_kv_peak_time_s"])
         ),
-        "- Corriente máxima de cierre: **{:.3f} kA pico**.".format(
+        "- Maximum closing current: **{:.3f} kA peak**.".format(
             float(metrics["current_ka_peak"])
         ),
         "",
-        "## Sistema estudiado",
+        "## System under study",
         "",
-        "- Tensión nominal: {} kV RMS línea-línea.".format(network["nominal_voltage_kv"]),  # type: ignore[index]
-        "- Longitud de línea: {} km.".format(network["line"]["length_km"]),  # type: ignore[index]
-        "- Potencia de cortocircuito de la fuente: {} MVA.".format(  # type: ignore[index]
+        "- Nominal voltage: {} kV line-line RMS.".format(network["nominal_voltage_kv"]),  # type: ignore[index]
+        "- Line length: {} km.".format(network["line"]["length_km"]),  # type: ignore[index]
+        "- Source short-circuit power: {} MVA.".format(  # type: ignore[index]
             network["source"]["short_circuit_mva"]  # type: ignore[index]
         ),
-        "- Paso EMT: {} μs; paso de salida: {} μs.".format(
+        "- EMT time step: {} us; output step: {} us.".format(
             float(simulation["step_s"]) * 1e6,  # type: ignore[index]
             float(simulation["output_step_s"]) * 1e6,  # type: ignore[index]
         ),
+        "",
+        "## Method",
+        "",
+        "1. Activate the versioned project and Study Case.",
+        "2. Configure the distributed, frequency-dependent line model.",
+        "3. Apply the three-pole breaker-closing event at the requested point on wave.",
+        "4. Run EMT initial conditions and time-domain simulation.",
+        "5. Export instantaneous Vabc/Iabc channels through ElmRes and ComRes.",
+        "6. Normalize the CSV, calculate peak metrics, and compare the regression baseline.",
         "",
     ]
     if diagram_figure:
         lines.extend(
             [
-                "## Diagrama unifilar",
+                "## PowerFactory single-line diagram",
                 "",
-                "![Diagrama unifilar]({})".format(relative(diagram_figure)),
+                "![PowerFactory single-line diagram]({})".format(relative(diagram_figure)),
                 "",
             ]
         )
     if waveform_figure:
         lines.extend(
             [
-                "## Resultados EMT",
+                "## EMT waveforms",
                 "",
-                "![Formas de onda]({})".format(relative(waveform_figure)),
+                "![EMT waveforms]({})".format(relative(waveform_figure)),
                 "",
             ]
         )
     lines.extend(
         [
-            "## Criterio de interpretación",
+            "## Interpretation",
             "",
-            "La tensión en pu se refiere al valor pico fase-tierra nominal:",
-            r"$V_{base,pico}=V_{LL,rms}\sqrt{2/3}$.",
-            "El resultado debe contrastarse con la coordinación de aislamiento específica",
-            "del proyecto, las tolerancias de parámetros y el desempeño de descargadores.",
+            "The per-unit voltage uses nominal phase-ground peak as its base:",
+            r"$V_{base,peak}=V_{LL,rms}\sqrt{2/3}$.",
+            "The result must be assessed against project-specific insulation coordination,",
+            "parameter tolerances, switching statistics, and surge-arrester performance.",
             "",
-            "## Trazabilidad",
+            "## Traceability",
             "",
-            "- Estudio: `{}`.".format(study["id"]),  # type: ignore[index]
-            "- Modo de simulación: EMT instantáneo (`{}`).".format(simulation["mode_code"]),  # type: ignore[index]
-            "- Archivo de configuración: `{}`.".format(config.get("_meta", {}).get("path", "n/a")),  # type: ignore[union-attr]
+            "- Study: `{}`.".format(study["id"]),  # type: ignore[index]
+            "- Simulation mode: instantaneous EMT (`{}`).".format(simulation["mode_code"]),  # type: ignore[index]
+            "- Configuration file: `{}`.".format(config.get("_meta", {}).get("path", "n/a")),  # type: ignore[union-attr]
             "",
         ]
     )

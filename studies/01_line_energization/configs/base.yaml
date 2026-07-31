@@ -1,6 +1,6 @@
 study:
   id: line_energization_230kv
-  title: Energización EMT de línea aérea de 230 kV
+  title: 230 kV overhead-line EMT energization
   owner: Fernando Cornielle
   status: engineering_example
 
@@ -83,6 +83,10 @@ sweep:
   base_switching_time_s: 0.020
   angles_deg: [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330]
 
+time_step_sensitivity:
+  switching_angle_deg: 30.0
+  steps_us: [20.0, 10.0, 5.0, 2.5, 1.25]
+
 monte_carlo:
   enabled: false
   samples: 200
@@ -107,6 +111,9 @@ analysis:
     i_send_a_ka: Phase Current A/Terminal i in kA
     i_send_b_ka: Phase Current B/Terminal i in kA
     i_send_c_ka: Phase Current C/Terminal i in kA
+
+validation:
+  baseline: ../expected/powerfactory_2024_sp2.yaml
 
 outputs:
   directory: ../outputs

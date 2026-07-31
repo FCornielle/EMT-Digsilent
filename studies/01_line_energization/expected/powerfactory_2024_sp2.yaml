@@ -3,9 +3,8 @@ baseline:
   powerfactory_version: "2024 SP2 (24.0.2)"
   powerfactory_user: "VM-PF"
   python_version: "3.9.0"
-  emt_licence_available: true
   scenario_count: 12
-  configuration_sha256: "C4EB9FA329A055FA9516B357263E2C0AB02B8D203F2F177F1D408BEF0A8A9CF3"
+  configuration_sha256: "B1DBEAF5E51FD76DD0A86C1D630E9761E5384B7C6A79AA9BF52B58EE1C6FFBF1"
   sweep_summary_sha256: "158D4067E2A55B09269253A87C94B76DD33F19C46AF84B99CBB48C1434A5B7FC"
 
 results:
@@ -21,5 +20,5 @@ tolerances:
 
 notes:
   - "Regression baseline for the example model, not an insulation-design acceptance limit."
+  - "The 12-angle baseline uses 10 us; the separate time-step study gives the converged peak trend."
   - "Re-baseline only after reviewing parameter, solver or PowerFactory-version changes."
-

@@ -117,7 +117,7 @@ def connect(config: Mapping[str, Any]) -> Any:
 
     if app is None:
         raise PowerFactoryUnavailable(
-            "PowerFactory returned no application object. Check user, licence and connection mode."
+            "PowerFactory returned no application object. Check the user and connection mode."
         )
     return app
 

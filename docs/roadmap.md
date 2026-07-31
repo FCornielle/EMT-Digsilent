@@ -2,7 +2,8 @@
 
 The studies are delivered as vertical slices. Each slice contains a model
 builder, configuration, scenario generator, result contract, plots, tests and a
-technical README.
+technical README. The common review sequence is defined in
+[`case_methodology.md`](case_methodology.md).
 
 | ID | Industrial study | Main KPI | Status |
 |---:|---|---|---|
@@ -21,7 +22,7 @@ technical README.
 
 ## Delivery sequence
 
-1. Validate the complete Study 01 loop on the installed PowerFactory licence.
+1. Validate the complete Study 01 loop on the installed PowerFactory version.
 2. Add transformer energization because it introduces nonlinear initialization,
    residual flux and harmonic metrics reusable by several later studies.
 3. Add variable-clearing fault and TRV cases, sharing event/protection utilities.
@@ -34,9 +35,10 @@ technical README.
 - Industry question and decision criterion are explicit.
 - Parameters distinguish example, vendor, measured and assumed data.
 - Model is built/updated through the Python API.
+- The linked native PowerFactory single-line diagram is generated and exported.
 - Units, bases and monitored result-variable codes are versioned.
 - At least one analytical or published benchmark is documented.
 - Time-step and parameter sensitivities are included.
-- Raw CSV, normalized CSV, figures and report are generated automatically.
-- Offline unit tests and licensed integration checks are defined.
-
+- Raw CSV, normalized CSV, multiple figures and report are generated automatically.
+- A numbered methodology explains model preparation, events, results and interpretation.
+- Offline unit tests and explicit PowerFactory integration checks are defined.

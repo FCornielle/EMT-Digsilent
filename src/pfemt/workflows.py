@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import platform
 import sys
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional
@@ -13,13 +14,25 @@ import pandas as pd
 
 from pfemt.application import connect
 from pfemt.builders.line_energization import build_line_energization_model
-from pfemt.config import resolve_from_config, validate_study_config
-from pfemt.diagram import plot_line_energization_diagram
+from pfemt.config import load_yaml, resolve_from_config, validate_study_config
+from pfemt.diagram import export_powerfactory_diagram
+from pfemt.errors import ResultFormatError
 from pfemt.events import configure_switch_event
 from pfemt.io import read_powerfactory_csv, write_normalized_csv
-from pfemt.metrics import line_energization_metrics
+from pfemt.metrics import (
+    compare_sweep_to_baseline,
+    line_energization_derived_quantities,
+    line_energization_metrics,
+)
 from pfemt.pfapi import set_attribute, unique_calc_object
-from pfemt.plotting import plot_line_energization, plot_sweep_summary
+from pfemt.plotting import (
+    plot_line_energization,
+    plot_overvoltage_envelope,
+    plot_parameter_overview,
+    plot_sweep_summary,
+    plot_timestep_sensitivity,
+    plot_travelling_wave_detail,
+)
 from pfemt.project import activate_project, activate_study_case
 from pfemt.reporting import line_energization_report, write_metrics
 from pfemt.results import export_csv, register_channels, result_object
@@ -43,6 +56,18 @@ def build(config: Mapping[str, Any], app: Optional[Any] = None) -> Dict[str, Any
     # returned PowerFactory objects.
     objects["application"] = pf_app
     return objects
+
+
+def export_diagram(config: Mapping[str, Any], app: Optional[Any] = None) -> Path:
+    """Build and export the linked PowerFactory one-line diagram."""
+    validate_study_config(config)
+    pf_app = app or connect(config)
+    objects = build_line_energization_model(pf_app, config)
+    return export_powerfactory_diagram(
+        pf_app,
+        objects["diagram"],
+        output_directory(config) / "figures" / "powerfactory_single_line.png",
+    )
 
 
 def _prepare_active_study(app: Any, config: Mapping[str, Any]) -> Dict[str, Any]:
@@ -109,7 +134,6 @@ def run_point_on_wave_sweep(
             "python_version": sys.version.split()[0],
             "platform": platform.platform(),
             "powerfactory_user": pf_app.GetCurrentUser().loc_name,
-            "emt_licence_available": bool(pf_app.LicenceHasModule("stabemt")),
             "project": config["powerfactory"]["project"],
             "study_case": config["powerfactory"]["study_case"],
             "scenario_count": len(scenarios),
@@ -155,18 +179,17 @@ def analyse_csv(
         frame,
         metrics,
         output / "figures" / "{}_waveforms.png".format(scenario.scenario_id),
-        "{} — {}".format(config["study"]["title"], scenario.scenario_id),
+        "{} — phase-A close at {:.0f} degrees".format(
+            config["study"]["title"], scenario.switching_angle_deg
+        ),
     )
-    diagram = plot_line_energization_diagram(
-        config,
-        output / "figures" / "single_line_diagram.png",
-    )
+    diagram = output / "figures" / "powerfactory_single_line.png"
     report = line_energization_report(
         config,
         metrics,
         output / "reports" / "{}.md".format(scenario.scenario_id),
         figure,
-        diagram,
+        diagram if diagram.is_file() else None,
     )
     return {
         **metrics,
@@ -188,7 +211,110 @@ def analyse_sweep(config: Mapping[str, Any], directory: Optional[Path] = None) -
     summary_path = output / "sweep_summary.csv"
     summary.to_csv(summary_path, index=False, float_format="%.10g")
     plot_sweep_summary(summary, output / "figures" / "point_on_wave_sweep.png")
+
+    derived = line_energization_derived_quantities(config)
+    write_metrics(derived, output / "validation" / "analytical_checks.json")
+    plot_parameter_overview(config, derived, output / "figures" / "parameter_overview.png")
+
+    nominal_peak = derived["nominal_phase_peak_kv"]
+    aligned_rows = []
+    for row in rows:
+        normalized = pd.read_csv(row["normalized_csv"])
+        relative_ms = (normalized["time_s"] - float(row["switching_time_s"])) * 1000.0
+        mask = (relative_ms >= 0.0) & (relative_ms <= 10.0)
+        voltage_envelope = (
+            normalized.loc[mask, ["v_recv_a_kv", "v_recv_b_kv", "v_recv_c_kv"]]
+            .abs()
+            .max(axis=1)
+            / nominal_peak
+        )
+        aligned_rows.append(
+            pd.DataFrame(
+                {
+                    "switching_angle_deg": float(row["switching_angle_deg"]),
+                    "relative_time_ms": relative_ms.loc[mask].to_numpy(),
+                    "voltage_envelope_pu": voltage_envelope.to_numpy(),
+                }
+            )
+        )
+    aligned = pd.concat(aligned_rows, ignore_index=True)
+    plot_overvoltage_envelope(aligned, output / "figures" / "overvoltage_envelope.png")
+
+    worst_id = str(summary.iloc[0]["scenario_id"])
+    worst = next(row for row in rows if row["scenario_id"] == worst_id)
+    worst_frame = pd.read_csv(worst["normalized_csv"])
+    plot_travelling_wave_detail(
+        worst_frame,
+        worst,
+        derived["one_way_travel_time_ms"],
+        output / "figures" / "travelling_wave_detail.png",
+    )
+
+    validation = config.get("validation", {})
+    baseline_value = validation.get("baseline")
+    if baseline_value:
+        baseline_path = resolve_from_config(config, str(baseline_value))
+        baseline = load_yaml(baseline_path)
+        comparison = compare_sweep_to_baseline(summary, baseline)
+        write_metrics(comparison, output / "validation" / "baseline_comparison.json")
+        if comparison["status"] != "pass":
+            raise ResultFormatError(
+                "Sweep results are outside the versioned regression tolerances; "
+                "inspect validation/baseline_comparison.json"
+            )
     return summary_path
+
+
+def run_timestep_sensitivity(
+    config: Mapping[str, Any],
+    app: Optional[Any] = None,
+) -> Path:
+    """Run the declared worst-angle case with several EMT time steps."""
+    validate_study_config(config)
+    settings = config["time_step_sensitivity"]
+    angle = float(settings["switching_angle_deg"])
+    scenarios = point_on_wave_scenarios(config)
+    scenario = next(item for item in scenarios if item.switching_angle_deg == angle)
+    pf_app = app or connect(config)
+    build_line_energization_model(pf_app, config)
+    output = output_directory(config) / "time_step_sensitivity"
+    rows = []
+    for step_us in settings["steps_us"]:
+        study_config = deepcopy(config)
+        step_s = float(step_us) * 1e-6
+        study_config["simulation"]["step_s"] = step_s
+        study_config["simulation"]["output_step_s"] = step_s
+        raw = run_scenario(
+            pf_app,
+            study_config,
+            scenario,
+            output / "raw" / "step_{:g}us.csv".format(float(step_us)),
+        )
+        frame = read_powerfactory_csv(
+            raw,
+            config["analysis"]["column_map"],
+            config["analysis"].get("decimal", "."),
+        )
+        metrics = line_energization_metrics(
+            frame,
+            float(config["network"]["nominal_voltage_kv"]),
+            scenario.switching_time_s,
+        )
+        rows.append(
+            {
+                "time_step_us": float(step_us),
+                "switching_angle_deg": angle,
+                "voltage_peak_pu": float(metrics["voltage_peak_pu"]),
+                "voltage_peak_kv": float(metrics["voltage_kv_peak"]),
+                "current_ka_peak": float(metrics["current_ka_peak"]),
+            }
+        )
+    summary = pd.DataFrame(rows).sort_values("time_step_us")
+    destination = output / "timestep_sensitivity.csv"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    summary.to_csv(destination, index=False, float_format="%.10g")
+    plot_timestep_sensitivity(summary, output / "timestep_sensitivity.png")
+    return destination
 
 
 def write_run_metadata(
