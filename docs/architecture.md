@@ -37,9 +37,12 @@ without opening the simulation application.
 The electrical model and its single-line diagram are separate PowerFactory
 objects linked by `IntGrf.pDataObj`. The builder first runs `ComSgllayout` to
 insert graphical representations and then applies deterministic horizontal
-coordinates. `ComWr` exports the active `SetDeskpage` from the interactive
-Graphics Board. Matplotlib is used for result plots only; it does not redraw the
-PowerFactory network diagram.
+coordinates. If `ComSgllayout` previously created a diagram such as
+`GRID_230KV(1)`, the builder detects it by its linked electrical objects,
+reuses it, renames it, and applies the same layout instead of creating a
+duplicate. `ComWr` exports the active `SetDeskpage` from the interactive
+Graphics Board. Matplotlib is used for result plots only; it does not redraw
+the PowerFactory network diagram.
 
 ## Object naming
 

@@ -245,6 +245,11 @@ Then run the pandas stage:
 python scripts/analyse_results.py
 ```
 
+Rerunning the model builder also repairs an existing default diagram such as
+`GRID_230KV(1)`: it identifies the diagram from its linked objects, changes its
+name to `EMT Line Energization 230 kV`, rotates the busbars vertically, and
+places the source, breaker, line, and receiving bus on one horizontal axis.
+
 ### From a terminal
 
 ```powershell

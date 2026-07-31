@@ -14,11 +14,11 @@ DIAGRAM_NAME = "EMT Line Energization 230 kV"
 # a horizontal engineering one-line, rather than a presentation-only drawing.
 LINE_ENERGIZATION_LAYOUT: Mapping[str, Tuple[float, float, int]] = {
     "GRID_EQUIVALENT": (20.0, 60.0, 270),
-    "BUS_SENDING_230": (40.0, 60.0, 0),
-    "CB_LINE_230": (60.0, 60.0, 90),
-    "BUS_LINE_SIDE_230": (80.0, 60.0, 0),
-    "LINE_230KV_150KM": (110.0, 60.0, 90),
-    "BUS_RECEIVING_230": (140.0, 60.0, 0),
+    "BUS_SENDING_230": (45.0, 60.0, 90),
+    "CB_LINE_230": (65.0, 60.0, 90),
+    "BUS_LINE_SIDE_230": (85.0, 60.0, 90),
+    "LINE_230KV_150KM": (120.0, 60.0, 90),
+    "BUS_RECEIVING_230": (155.0, 60.0, 90),
 }
 
 
@@ -36,6 +36,13 @@ def _graphic_objects(diagram: Any) -> Dict[str, Any]:
         if data_object is not None:
             result[str(data_object.loc_name)] = graphic
     return result
+
+
+def _linked_diagrams(folder: Any) -> list[Any]:
+    """Return diagrams that already represent every object in this study."""
+    expected = set(LINE_ENERGIZATION_LAYOUT)
+    diagrams = list(folder.GetContents("*.IntGrfnet") or [])
+    return [diagram for diagram in diagrams if expected.issubset(_graphic_objects(diagram))]
 
 
 def _connections(graphic: Any) -> Dict[int, Any]:
@@ -66,21 +73,21 @@ def apply_line_energization_layout(diagram: Any) -> Any:
         set_attribute(graphic, "iRot", rotation)
 
     source_connection = _connections(graphics["GRID_EQUIVALENT"])[0]
-    _set_connection(source_connection, (24.375, 40.0), (60.0, 60.0))
+    _set_connection(source_connection, (24.375, 45.0), (60.0, 60.0))
 
     breaker_connections = _connections(graphics["CB_LINE_230"])
-    _set_connection(breaker_connections[0], (57.8125, 40.0, 40.0), (60.0, 60.0, 60.0))
-    _set_connection(breaker_connections[1], (62.1875, 80.0, 80.0), (60.0, 60.0, 60.0))
+    _set_connection(breaker_connections[0], (62.8125, 45.0, 45.0), (60.0, 60.0, 60.0))
+    _set_connection(breaker_connections[1], (67.1875, 85.0, 85.0), (60.0, 60.0, 60.0))
 
     line_connections = _connections(graphics["LINE_230KV_150KM"])
-    _set_connection(line_connections[0], (110.0, 80.0, 80.0), (60.0, 60.0, 60.0))
-    _set_connection(line_connections[1], (110.0, 140.0, 140.0), (60.0, 60.0, 60.0))
+    _set_connection(line_connections[0], (120.0, 85.0, 85.0), (60.0, 60.0, 60.0))
+    _set_connection(line_connections[1], (120.0, 155.0, 155.0), (60.0, 60.0, 60.0))
 
     set_attribute(diagram, "loc_name", DIAGRAM_NAME)
     for name, value in (
         ("rLBotX", 10.0),
         ("rLBotY", 45.0),
-        ("rRTopX", 150.0),
+        ("rRTopX", 165.0),
         ("rRTopY", 75.0),
     ):
         set_attribute(diagram, name, value, required=False)
@@ -90,9 +97,13 @@ def apply_line_energization_layout(diagram: Any) -> Any:
 def ensure_line_energization_diagram(app: Any, grid: Any) -> Any:
     """Create, link, and arrange the native PowerFactory one-line diagram."""
     folder = app.GetProjectFolder("dia", 1)
-    matches = list(folder.GetContents("{}.IntGrfnet".format(DIAGRAM_NAME), 1) or [])
-    if matches:
-        return apply_line_energization_layout(matches[0])
+    linked = _linked_diagrams(folder)
+    if linked:
+        preferred = next(
+            (diagram for diagram in linked if diagram.loc_name == DIAGRAM_NAME),
+            linked[0],
+        )
+        return apply_line_energization_layout(preferred)
 
     before = {item.GetFullName() for item in list(folder.GetContents("*.IntGrfnet") or [])}
     command = app.GetFromStudyCase("ComSgllayout")
@@ -107,6 +118,9 @@ def ensure_line_energization_diagram(app: Any, grid: Any) -> Any:
         for item in list(folder.GetContents("*.IntGrfnet") or [])
         if item.GetFullName() not in before
     ]
+    candidates.extend(
+        diagram for diagram in _linked_diagrams(folder) if diagram not in candidates
+    )
     expected = set(LINE_ENERGIZATION_LAYOUT)
     for candidate in candidates:
         if expected.issubset(_graphic_objects(candidate)):
