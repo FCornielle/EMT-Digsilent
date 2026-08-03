@@ -10,7 +10,10 @@ from pathlib import Path
 import pytest
 
 from pfemt.application import connect
+from pfemt.builders.cable_energization import apply_cable_bonding_scenario
+from pfemt.cable import cable_scenarios
 from pfemt.config import load_yaml
+from pfemt.diagram import CABLE_GENERATED_LAYER_NAME
 from pfemt.workflows import build
 
 pytestmark = pytest.mark.powerfactory
@@ -65,9 +68,50 @@ def test_explicit_cable_energization_model_builds() -> None:
             objects["core_line"],
             objects["sheath_line"],
         ]
+        assert objects["sheath_ground_sending"].bus1 is not None
+        assert objects["sheath_ground_receiving"].bus1 is not None
+        assert objects["sheath_ground_sending"].on_off == 0
+        assert objects["sheath_ground_receiving"].on_off == 0
         assert objects["study_case"].loc_name == config["powerfactory"]["study_case"]
         assert objects["diagram"].loc_name == "EMT Cable Energization 220 kV"
         assert len(objects["diagram"].GetContents("*.IntGrf")) >= 9
+        represented = {
+            graphic.pDataObj.loc_name
+            for graphic in objects["diagram"].GetContents("*.IntGrf")
+            if getattr(graphic, "pDataObj", None) is not None
+        }
+        assert represented == set(config["objects"].values()) - {
+            config["objects"]["cable_system"]
+        }
+        guide_layers = [
+            layer
+            for layer in objects["diagram"].GetContents("*.IntGrflayer")
+            if layer.loc_name == CABLE_GENERATED_LAYER_NAME
+        ]
+        assert all(layer.GetNumberOfAnnotationElements() == 0 for layer in guide_layers)
+
+        scenarios = cable_scenarios(config)
+        single_point = next(
+            item for item in scenarios if item.bonding_id == "single_point"
+        )
+        apply_cable_bonding_scenario(objects, single_point)
+        assert objects["sheath_ground_sending"].on_off == 1
+        assert objects["sheath_ground_receiving"].on_off == 0
+        assert list(objects["cable_system_type"].bond) == [0.0]
+
+        cross_bonded = next(
+            item for item in scenarios if item.bonding_id == "cross_bonded"
+        )
+        apply_cable_bonding_scenario(objects, cross_bonded)
+        assert objects["sheath_ground_sending"].on_off == 1
+        assert objects["sheath_ground_receiving"].on_off == 1
+        assert list(objects["cable_system_type"].bond) == [1.0]
+
+        isolated = next(item for item in scenarios if item.bonding_id == "isolated")
+        apply_cable_bonding_scenario(objects, isolated)
+        assert objects["sheath_ground_sending"].on_off == 0
+        assert objects["sheath_ground_receiving"].on_off == 0
+        assert list(objects["cable_system_type"].bond) == [0.0]
     finally:
         objects.clear()
         del app

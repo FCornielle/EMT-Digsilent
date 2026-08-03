@@ -10,10 +10,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from matplotlib.colors import ListedColormap
 from matplotlib.patches import Circle
 
 from pfemt.cable import (
+    CableScenario,
     cable_bonding_cases,
     cable_derived_quantities,
     cable_geometry,
@@ -311,3 +313,142 @@ def generate_cable_design_figures(
             config, output / "scenario_coverage.png"
         ),
     }
+
+
+def plot_cable_emt_waveforms(
+    frame: pd.DataFrame,
+    scenario: CableScenario,
+    metrics: Mapping[str, object],
+    destination: Path,
+) -> Path:
+    """Plot four coordinated EMT panels for one cable energization case."""
+    _style()
+    output = Path(destination)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    relative_ms = (frame["time_s"] - scenario.switching_time_s) * 1e3
+    window = (relative_ms >= -2.0) & (relative_ms <= 20.0)
+    view = frame.loc[window] if window.any() else frame
+    time_ms = relative_ms.loc[view.index]
+    colors = ("#0072B2", "#D55E00", "#009E73")
+    figure, axes = plt.subplots(2, 2, figsize=(12.5, 7.8), constrained_layout=True)
+
+    for phase, color in zip(("a", "b", "c"), colors):
+        axes[0, 0].plot(
+            time_ms,
+            view["v_core_recv_{}_kv".format(phase)],
+            color=color,
+            label="Phase {}".format(phase.upper()),
+        )
+    axes[0, 0].set_ylabel("Receiving voltage [kV]")
+    axes[0, 0].set_title(
+        "Open-end conductor voltage | peak {:.3f} pu".format(
+            float(metrics["core_voltage_peak_pu"])
+        )
+    )
+    axes[0, 0].legend(ncol=3, fontsize=8)
+
+    for phase, color in zip(("a", "b", "c"), colors):
+        axes[0, 1].plot(
+            time_ms,
+            view["i_core_send_{}_ka".format(phase)],
+            color=color,
+            label="Phase {}".format(phase.upper()),
+        )
+    axes[0, 1].set_ylabel("Sending current [kA]")
+    axes[0, 1].set_title(
+        "Core energization current | peak {:.3f} kA".format(
+            float(metrics["core_current_peak_ka"])
+        )
+    )
+
+    send_voltage = view[
+        ["v_sheath_send_a_kv", "v_sheath_send_b_kv", "v_sheath_send_c_kv"]
+    ].abs().max(axis=1)
+    receive_voltage = view[
+        ["v_sheath_recv_a_kv", "v_sheath_recv_b_kv", "v_sheath_recv_c_kv"]
+    ].abs().max(axis=1)
+    axes[1, 0].plot(time_ms, send_voltage, color="#6A3D9A", label="Sending end")
+    axes[1, 0].plot(
+        time_ms,
+        receive_voltage,
+        color="#CC79A7",
+        linestyle="--",
+        label="Receiving end",
+    )
+    axes[1, 0].set_ylabel("Max |screen voltage| [kV]")
+    axes[1, 0].set_title(
+        "Metallic-sheath voltage | peak {:.3f} kV".format(
+            float(metrics["sheath_voltage_peak_kv"])
+        )
+    )
+    axes[1, 0].legend(fontsize=8)
+
+    sheath_current = view[
+        ["i_sheath_send_a_ka", "i_sheath_send_b_ka", "i_sheath_send_c_ka"]
+    ].abs().max(axis=1)
+    ground_current = view[
+        [
+            "i_ground_send_a_ka",
+            "i_ground_send_b_ka",
+            "i_ground_send_c_ka",
+            "i_ground_recv_a_ka",
+            "i_ground_recv_b_ka",
+            "i_ground_recv_c_ka",
+        ]
+    ].abs().max(axis=1)
+    axes[1, 1].plot(time_ms, sheath_current, color="#4D4D4D", label="Sheath")
+    axes[1, 1].plot(time_ms, ground_current, color="#D62728", label="Ground switch")
+    axes[1, 1].set_ylabel("Max |current| [kA]")
+    axes[1, 1].set_title("Screen and earthing currents")
+    axes[1, 1].legend(fontsize=8)
+
+    for axis in axes.flat:
+        axis.axvline(0.0, color="#111111", linestyle=":", linewidth=1.0)
+        axis.set_xlabel("Time relative to breaker closing [ms]")
+    figure.suptitle(
+        "{} | {} | phase-A close at {:g} degrees".format(
+            scenario.scenario_id,
+            scenario.bonding_label,
+            scenario.switching_angle_deg,
+        ),
+        fontsize=13,
+    )
+    figure.savefig(output, bbox_inches="tight")
+    plt.close(figure)
+    return output
+
+
+def plot_cable_sweep_summary(summary: pd.DataFrame, destination: Path) -> Path:
+    """Compare the principal EMT peaks across bonding and closing angle."""
+    _style()
+    output = Path(destination)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    figure, axes = plt.subplots(1, 3, figsize=(14.5, 4.8), constrained_layout=True)
+    palette = {
+        "isolated": "#0072B2",
+        "single_point": "#D55E00",
+        "both_ends": "#009E73",
+        "cross_bonded": "#6A3D9A",
+    }
+    panels = (
+        ("core_voltage_peak_pu", "Open-end voltage [pu peak]"),
+        ("sheath_voltage_peak_kv", "Sheath voltage [kV peak]"),
+        ("ground_current_peak_ka", "Ground current [kA peak]"),
+    )
+    for bonding_id, group in summary.groupby("bonding_id", sort=False):
+        ordered = group.sort_values("switching_angle_deg")
+        for axis, (column, label) in zip(axes, panels):
+            axis.plot(
+                ordered["switching_angle_deg"],
+                ordered[column],
+                marker="o",
+                color=palette.get(str(bonding_id), "#333333"),
+                label=str(ordered.iloc[0]["bonding_label"]),
+            )
+            axis.set_xlabel("Phase-A closing angle [degrees]")
+            axis.set_ylabel(label)
+    axes[0].legend(fontsize=8)
+    figure.suptitle("Study 02 EMT bonding and point-on-wave comparison", fontsize=13)
+    figure.savefig(output, bbox_inches="tight")
+    plt.close(figure)
+    return output

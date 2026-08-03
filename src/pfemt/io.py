@@ -32,17 +32,33 @@ def read_powerfactory_csv(
         first_line = stream.readline()
         second_line = stream.readline()
     separator = ";" if first_line.count(";") > first_line.count(",") else ","
+    first_header = next(csv.reader([first_line], delimiter=separator), [])
     second_header = next(csv.reader([second_line], delimiter=separator), [])
     has_powerfactory_object_header = bool(
         second_header
         and _normalized(second_header[0]).startswith("time")
     )
-    frame = pd.read_csv(
-        source,
-        sep=separator,
-        skiprows=1 if has_powerfactory_object_header else 0,
-        decimal=decimal,
-    )
+    if has_powerfactory_object_header:
+        if len(first_header) != len(second_header):
+            raise ResultFormatError(
+                "PowerFactory CSV object and variable header lengths differ: {} versus {}".format(
+                    len(first_header), len(second_header)
+                )
+            )
+        combined_header = [second_header[0]] + [
+            "{} | {}".format(first_header[index], second_header[index])
+            for index in range(1, len(second_header))
+        ]
+        frame = pd.read_csv(
+            source,
+            sep=separator,
+            skiprows=2,
+            header=None,
+            names=combined_header,
+            decimal=decimal,
+        )
+    else:
+        frame = pd.read_csv(source, sep=separator, decimal=decimal)
     if frame.empty:
         raise ResultFormatError("Result CSV is empty: {}".format(source))
 

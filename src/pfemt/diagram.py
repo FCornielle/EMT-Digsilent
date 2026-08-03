@@ -10,6 +10,9 @@ from pfemt.pfapi import execute, set_attribute
 
 LINE_DIAGRAM_NAME = "EMT Line Energization 230 kV"
 CABLE_DIAGRAM_NAME = "EMT Cable Energization 220 kV"
+# Reserved name from the retired SVG overlay. The builder removes only this
+# generated layer and never touches annotations or layout work created by a user.
+CABLE_GENERATED_LAYER_NAME = "PFEMT Study Guide"
 # Backwards-compatible public name used by Study 01 tests and scripts.
 DIAGRAM_NAME = LINE_DIAGRAM_NAME
 
@@ -25,15 +28,19 @@ LINE_ENERGIZATION_LAYOUT: Mapping[str, Tuple[float, float, int]] = {
 }
 
 CABLE_ENERGIZATION_LAYOUT: Mapping[str, Tuple[float, float, int]] = {
-    "GRID_EQUIVALENT": (20.0, 55.0, 270),
-    "BUS_CABLE_SENDING_220": (45.0, 55.0, 90),
-    "CB_CABLE_220": (65.0, 55.0, 90),
-    "BUS_CABLE_LINE_SIDE_220": (85.0, 55.0, 90),
-    "CABLE_CORE_220KV_40KM": (125.0, 55.0, 90),
-    "BUS_CABLE_RECEIVING_220": (165.0, 55.0, 90),
-    "BUS_SHEATH_SENDING_220": (85.0, 90.0, 90),
-    "CABLE_SHEATH_220KV_40KM": (125.0, 90.0, 90),
-    "BUS_SHEATH_RECEIVING_220": (165.0, 90.0, 90),
+    # PowerFactory's diagram y-axis is visually bottom-to-top. Use the larger
+    # coordinate for the primary circuit so it appears above the sheath row.
+    "GRID_EQUIVALENT": (20.0, 92.0, 270),
+    "BUS_CABLE_SENDING_220": (50.0, 92.0, 90),
+    "CB_CABLE_220": (78.0, 92.0, 90),
+    "BUS_CABLE_LINE_SIDE_220": (108.0, 92.0, 90),
+    "CABLE_CORE_220KV_40KM": (160.0, 92.0, 90),
+    "BUS_CABLE_RECEIVING_220": (215.0, 92.0, 90),
+    "BUS_SHEATH_SENDING_220": (108.0, 52.0, 90),
+    "CABLE_SHEATH_220KV_40KM": (160.0, 52.0, 90),
+    "BUS_SHEATH_RECEIVING_220": (215.0, 52.0, 90),
+    "GND_SHEATH_SENDING_220": (108.0, 35.0, 0),
+    "GND_SHEATH_RECEIVING_220": (215.0, 35.0, 0),
 }
 
 
@@ -62,6 +69,18 @@ def _linked_diagrams_for(folder: Any, expected: set[str]) -> list[Any]:
 def _linked_diagrams(folder: Any) -> list[Any]:
     """Return diagrams that already represent every Study 01 object."""
     return _linked_diagrams_for(folder, set(LINE_ENERGIZATION_LAYOUT))
+
+
+def _claim_diagram_name(folder: Any, preferred: Any, canonical_name: str) -> Any:
+    """Give the complete diagram its stable name while retaining older drawings."""
+    preferred_path = preferred.GetFullName()
+    for diagram in list(folder.GetContents("*.IntGrfnet") or []):
+        if diagram.GetFullName() == preferred_path:
+            continue
+        if diagram.loc_name == canonical_name:
+            set_attribute(diagram, "loc_name", "Legacy - {}".format(canonical_name))
+    set_attribute(preferred, "loc_name", canonical_name)
+    return preferred
 
 
 def _connections(graphic: Any) -> Dict[int, Any]:
@@ -164,28 +183,47 @@ def apply_cable_energization_layout(diagram: Any) -> Any:
         set_attribute(graphic, "iRot", rotation)
 
     source_connection = _connections(graphics["GRID_EQUIVALENT"])[0]
-    _set_connection(source_connection, (24.375, 45.0), (55.0, 55.0))
+    _set_connection(source_connection, (24.375, 50.0), (92.0, 92.0))
 
     breaker_connections = _connections(graphics["CB_CABLE_220"])
-    _set_connection(breaker_connections[0], (62.8125, 45.0, 45.0), (55.0, 55.0, 55.0))
-    _set_connection(breaker_connections[1], (67.1875, 85.0, 85.0), (55.0, 55.0, 55.0))
+    _set_connection(breaker_connections[0], (75.8125, 50.0, 50.0), (92.0, 92.0, 92.0))
+    _set_connection(breaker_connections[1], (80.1875, 108.0, 108.0), (92.0, 92.0, 92.0))
 
     core_connections = _connections(graphics["CABLE_CORE_220KV_40KM"])
-    _set_connection(core_connections[0], (125.0, 85.0, 85.0), (55.0, 55.0, 55.0))
-    _set_connection(core_connections[1], (125.0, 165.0, 165.0), (55.0, 55.0, 55.0))
+    _set_connection(core_connections[0], (160.0, 108.0, 108.0), (92.0, 92.0, 92.0))
+    _set_connection(core_connections[1], (160.0, 215.0, 215.0), (92.0, 92.0, 92.0))
 
     sheath_connections = _connections(graphics["CABLE_SHEATH_220KV_40KM"])
-    _set_connection(sheath_connections[0], (125.0, 85.0, 85.0), (90.0, 90.0, 90.0))
-    _set_connection(sheath_connections[1], (125.0, 165.0, 165.0), (90.0, 90.0, 90.0))
+    _set_connection(sheath_connections[0], (160.0, 108.0, 108.0), (52.0, 52.0, 52.0))
+    _set_connection(sheath_connections[1], (160.0, 215.0, 215.0), (52.0, 52.0, 52.0))
+
+    set_font = getattr(diagram, "SetFontFor", None)
+    if callable(set_font):
+        for nodes_or_branches in (0, 1):
+            set_font(0, nodes_or_branches, "Segoe UI", 9, 0)
 
     set_attribute(diagram, "loc_name", CABLE_DIAGRAM_NAME)
     for name, value in (
         ("rLBotX", 10.0),
-        ("rLBotY", 40.0),
-        ("rRTopX", 175.0),
-        ("rRTopY", 105.0),
+        ("rLBotY", 35.0),
+        ("rRTopX", 230.0),
+        ("rRTopY", 110.0),
     ):
         set_attribute(diagram, name, value, required=False)
+    return diagram
+
+
+def remove_generated_cable_annotations(diagram: Any) -> Any:
+    """Remove the retired PFEMT overlay without touching user-created layers."""
+    layers = list(diagram.GetContents("*.IntGrflayer") or [])
+    generated = [item for item in layers if item.loc_name == CABLE_GENERATED_LAYER_NAME]
+    for layer in generated:
+        clear = getattr(layer, "ClearData", None)
+        if callable(clear):
+            clear()
+    set_visibility = getattr(diagram, "SetLayerVisibility", None)
+    if callable(set_visibility):
+        set_visibility(CABLE_GENERATED_LAYER_NAME, 0)
     return diagram
 
 
@@ -199,7 +237,10 @@ def ensure_cable_energization_diagram(app: Any, grid: Any) -> Any:
             (diagram for diagram in linked if diagram.loc_name == CABLE_DIAGRAM_NAME),
             linked[0],
         )
-        return apply_cable_energization_layout(preferred)
+        _claim_diagram_name(folder, preferred, CABLE_DIAGRAM_NAME)
+        # An existing diagram may contain carefully placed symbols and labels.
+        # Preserve that engineering drawing across idempotent API rebuilds.
+        return remove_generated_cable_annotations(preferred)
 
     before = {item.GetFullName() for item in list(folder.GetContents("*.IntGrfnet") or [])}
     command = app.GetFromStudyCase("ComSgllayout")
@@ -221,7 +262,9 @@ def ensure_cable_energization_diagram(app: Any, grid: Any) -> Any:
     )
     for candidate in candidates:
         if expected.issubset(_graphic_objects(candidate)):
-            return apply_cable_energization_layout(candidate)
+            _claim_diagram_name(folder, candidate, CABLE_DIAGRAM_NAME)
+            apply_cable_energization_layout(candidate)
+            return remove_generated_cable_annotations(candidate)
     raise PowerFactoryExecutionError(
         "Diagram Layout Tool completed but did not create the expected cable diagram"
     )

@@ -1,0 +1,17 @@
+baseline:
+  powerfactory_version: "24.0.2.0"
+  executed_utc: "2026-08-03T15:37:55.913927+00:00"
+  configuration_sha256: "C0FC0A957C8E84176719CB5543E434E5B73675399A045843EDE8BDEA808F9FBA"
+  simulation_mode: instantaneous_emt
+  time_step_us: 2.5
+  scenario_count: 24
+  result_contract_channels: 21
+  sweep_file: powerfactory_2024_emt_sweep.csv
+  worst_case_file: powerfactory_2024_worst_case.json
+  interpretation_scope: educational_industrial_benchmark
+
+regression_tolerances:
+  core_voltage_peak_pu_relative: 0.03
+  core_current_peak_ka_relative: 0.05
+  sheath_voltage_peak_kv_relative: 0.05
+  ground_current_peak_ka_relative: 0.05

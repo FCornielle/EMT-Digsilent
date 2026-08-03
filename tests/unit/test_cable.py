@@ -1,15 +1,18 @@
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from pfemt.cable import (
     cable_bonding_cases,
     cable_derived_quantities,
+    cable_energization_metrics,
     cable_geometry,
     cable_length_sensitivity,
     cable_scenarios,
     export_cable_scenario_manifest,
+    inactive_ground_result_channels,
 )
 from pfemt.config import load_yaml
 
@@ -74,6 +77,24 @@ def test_cable_scenario_campaign_is_complete_and_deterministic() -> None:
     assert first[-1].cross_bonded is True
 
 
+def test_open_ground_switch_channels_are_declared_as_physical_zeros() -> None:
+    isolated, single_point, both_ends = (
+        next(
+            scenario
+            for scenario in cable_scenarios(_config())
+            if scenario.bonding_id == bonding_id
+        )
+        for bonding_id in ("isolated", "single_point", "both_ends")
+    )
+    assert len(inactive_ground_result_channels(isolated)) == 6
+    assert inactive_ground_result_channels(single_point) == [
+        "i_ground_recv_a_ka",
+        "i_ground_recv_b_ka",
+        "i_ground_recv_c_ka",
+    ]
+    assert inactive_ground_result_channels(both_ends) == []
+
+
 def test_cable_scenario_manifest_has_one_row_per_case(tmp_path: Path) -> None:
     destination = export_cable_scenario_manifest(
         cable_scenarios(_config()), tmp_path / "scenario_manifest.csv"
@@ -89,3 +110,40 @@ def test_cable_scenario_ids_preserve_fractional_angles() -> None:
     identifiers = [scenario.scenario_id for scenario in cable_scenarios(config)]
     assert identifiers[:2] == ["isolated_pow_002p4deg", "isolated_pow_002p49deg"]
     assert len(set(identifiers)) == 8
+
+
+def test_cable_emt_metrics_find_peaks_after_switching() -> None:
+    frame = pd.DataFrame(
+        {
+            "time_s": [0.0, 0.02, 0.021],
+            "v_core_recv_a_kv": [999.0, 100.0, -300.0],
+            "v_core_recv_b_kv": [0.0, 120.0, 150.0],
+            "v_core_recv_c_kv": [0.0, -140.0, 130.0],
+            "i_core_send_a_ka": [0.0, 1.0, -2.0],
+            "i_core_send_b_ka": [0.0, 0.5, 1.5],
+            "i_core_send_c_ka": [0.0, 0.4, 1.0],
+            "v_sheath_send_a_kv": [0.0, 10.0, 20.0],
+            "v_sheath_send_b_kv": [0.0, 11.0, 21.0],
+            "v_sheath_send_c_kv": [0.0, 12.0, 22.0],
+            "v_sheath_recv_a_kv": [0.0, 13.0, 23.0],
+            "v_sheath_recv_b_kv": [0.0, 14.0, 24.0],
+            "v_sheath_recv_c_kv": [0.0, 15.0, 25.0],
+            "i_sheath_send_a_ka": [0.0, 0.1, 0.2],
+            "i_sheath_send_b_ka": [0.0, 0.2, 0.3],
+            "i_sheath_send_c_ka": [0.0, 0.3, 0.4],
+            "i_ground_send_a_ka": [0.0, 0.1, 0.5],
+            "i_ground_send_b_ka": [0.0, 0.2, 0.4],
+            "i_ground_send_c_ka": [0.0, 0.2, 0.3],
+            "i_ground_recv_a_ka": [0.0, 0.1, 0.2],
+            "i_ground_recv_b_ka": [0.0, 0.1, 0.2],
+            "i_ground_recv_c_ka": [0.0, 0.1, 0.2],
+        }
+    )
+    metrics = cable_energization_metrics(frame, 220.0, 0.02)
+    assert metrics["core_voltage_peak_kv"] == pytest.approx(300.0)
+    assert metrics["core_voltage_peak_channel"] == "v_core_recv_a_kv"
+    assert metrics["core_voltage_peak_time_ms"] == pytest.approx(1.0)
+    assert metrics["core_voltage_peak_pu"] == pytest.approx(
+        300.0 / (220.0 / np.sqrt(3.0) * np.sqrt(2.0))
+    )
+    assert metrics["ground_current_peak_ka"] == pytest.approx(0.5)

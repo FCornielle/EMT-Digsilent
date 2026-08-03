@@ -6,7 +6,9 @@ from pfemt.builders.cable_energization import (
     _cable_system_type,
     _cable_type,
     _fit_cable_system,
+    apply_cable_bonding_scenario,
 )
+from pfemt.cable import cable_scenarios
 from pfemt.config import load_yaml
 
 
@@ -110,5 +112,36 @@ def test_elm_cabsys_frequency_fit_is_requested_once() -> None:
     assert cable_system.update_calls == 1
     assert cable_system.fit_calls == 1
     _fit_cable_system(cable_system, _config())
+    assert cable_system.update_calls == 1
+    assert cable_system.fit_calls == 1
+
+
+def test_bonding_scenario_controls_ground_switches_and_cross_bonding() -> None:
+    config = _config()
+    scenarios = cable_scenarios(config)
+    cable_system_type = _Object("TypCabsys", "CABLE_SYSTEM")
+    cable_system_type.attributes["bond"] = [0.0]
+    cable_system = _CableSystem()
+    ground_sending = _Object("ElmGndswt", "GROUND_SEND")
+    ground_receiving = _Object("ElmGndswt", "GROUND_RECV")
+    objects = {
+        "cable_system_type": cable_system_type,
+        "cable_system": cable_system,
+        "sheath_ground_sending": ground_sending,
+        "sheath_ground_receiving": ground_receiving,
+    }
+
+    single_point = next(item for item in scenarios if item.bonding_id == "single_point")
+    apply_cable_bonding_scenario(objects, single_point)
+    assert ground_sending.attributes["on_off"] == 1
+    assert ground_receiving.attributes["on_off"] == 0
+    assert cable_system_type.attributes["bond"] == [0.0]
+    assert cable_system.fit_calls == 0
+
+    cross_bonded = next(item for item in scenarios if item.bonding_id == "cross_bonded")
+    apply_cable_bonding_scenario(objects, cross_bonded)
+    assert ground_sending.attributes["on_off"] == 1
+    assert ground_receiving.attributes["on_off"] == 1
+    assert cable_system_type.attributes["bond"] == [1.0]
     assert cable_system.update_calls == 1
     assert cable_system.fit_calls == 1

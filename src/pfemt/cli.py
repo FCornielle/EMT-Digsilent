@@ -15,10 +15,13 @@ from pfemt.config import load_yaml, validate_study_config
 from pfemt.errors import PFEMTError
 from pfemt.scenarios import export_manifest, point_on_wave_scenarios
 from pfemt.workflows import (
+    analyse_cable_sweep,
     analyse_sweep,
+    archive_project,
     build,
     export_diagram,
     output_directory,
+    run_cable_sweep,
     run_point_on_wave_sweep,
     run_timestep_sensitivity,
 )
@@ -40,6 +43,7 @@ def _parser() -> argparse.ArgumentParser:
         ("sweep", "Run the complete point-on-wave sweep"),
         ("analyse", "Analyse all exported sweep CSV files"),
         ("diagram", "Export the native PowerFactory one-line diagram"),
+        ("archive", "Build and export the PowerFactory project as a PFD archive"),
         ("manifest", "Generate the deterministic scenario manifest"),
         ("sensitivity", "Run the configured EMT time-step sensitivity"),
     ):
@@ -81,11 +85,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             objects = build(config)
             print("PowerFactory model ready: {}".format(objects["project"].loc_name))
         elif arguments.command == "sweep":
-            print(run_point_on_wave_sweep(config))
+            if "cable" in config["network"]:
+                print(run_cable_sweep(config))
+            else:
+                print(run_point_on_wave_sweep(config))
         elif arguments.command == "analyse":
-            print(analyse_sweep(config))
+            if "cable" in config["network"]:
+                print(analyse_cable_sweep(config))
+            else:
+                print(analyse_sweep(config))
         elif arguments.command == "diagram":
             print(export_diagram(config))
+        elif arguments.command == "archive":
+            print(archive_project(config))
         elif arguments.command == "manifest":
             destination = output_directory(config) / "scenario_manifest.csv"
             if "cable" in config["network"]:

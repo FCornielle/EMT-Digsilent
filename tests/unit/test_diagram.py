@@ -4,11 +4,14 @@ from types import SimpleNamespace
 from pfemt.diagram import (
     CABLE_DIAGRAM_NAME,
     CABLE_ENERGIZATION_LAYOUT,
+    CABLE_GENERATED_LAYER_NAME,
     DIAGRAM_NAME,
     LINE_ENERGIZATION_LAYOUT,
+    _claim_diagram_name,
     _linked_diagrams,
     _padded_points,
     export_powerfactory_diagram,
+    remove_generated_cable_annotations,
 )
 
 
@@ -72,21 +75,47 @@ def test_cable_diagram_separates_core_and_sheath_circuits() -> None:
         "CABLE_SHEATH_220KV_40KM",
         "BUS_SHEATH_RECEIVING_220",
     )
-    assert len(CABLE_ENERGIZATION_LAYOUT) == 9
-    assert {CABLE_ENERGIZATION_LAYOUT[name][1] for name in core_names} == {55.0}
-    assert {CABLE_ENERGIZATION_LAYOUT[name][1] for name in sheath_names} == {90.0}
-    assert [CABLE_ENERGIZATION_LAYOUT[name][0] for name in core_names] == [85.0, 125.0, 165.0]
+    assert len(CABLE_ENERGIZATION_LAYOUT) == 11
+    assert {CABLE_ENERGIZATION_LAYOUT[name][1] for name in core_names} == {92.0}
+    assert {CABLE_ENERGIZATION_LAYOUT[name][1] for name in sheath_names} == {52.0}
+    assert [CABLE_ENERGIZATION_LAYOUT[name][0] for name in core_names] == [108.0, 160.0, 215.0]
     assert [CABLE_ENERGIZATION_LAYOUT[name][0] for name in sheath_names] == [
-        85.0,
-        125.0,
-        165.0,
+        108.0,
+        160.0,
+        215.0,
     ]
+    assert CABLE_ENERGIZATION_LAYOUT["GND_SHEATH_SENDING_220"] == (108.0, 35.0, 0)
+    assert CABLE_ENERGIZATION_LAYOUT["GND_SHEATH_RECEIVING_220"] == (215.0, 35.0, 0)
 
 
 def test_existing_autolayout_diagram_is_detected_by_linked_objects() -> None:
     complete = _Diagram(list(LINE_ENERGIZATION_LAYOUT))
     incomplete = _Diagram(list(LINE_ENERGIZATION_LAYOUT)[:-1])
     assert _linked_diagrams(_Folder([incomplete, complete])) == [complete]
+
+
+def test_complete_diagram_claims_canonical_name_without_deleting_legacy() -> None:
+    class _NamedDiagram:
+        def __init__(self, name: str, path: str) -> None:
+            self.loc_name = name
+            self.path = path
+
+        def GetFullName(self) -> str:
+            return self.path
+
+        def HasAttribute(self, name: str) -> int:
+            return int(name == "loc_name")
+
+        def SetAttribute(self, name: str, value: object) -> None:
+            setattr(self, name, value)
+
+    legacy = _NamedDiagram(CABLE_DIAGRAM_NAME, "legacy.IntGrfnet")
+    complete = _NamedDiagram("{}(1)".format(CABLE_DIAGRAM_NAME), "complete.IntGrfnet")
+    folder = _Folder([legacy, complete])
+
+    assert _claim_diagram_name(folder, complete, CABLE_DIAGRAM_NAME) is complete
+    assert complete.loc_name == CABLE_DIAGRAM_NAME
+    assert legacy.loc_name == "Legacy - {}".format(CABLE_DIAGRAM_NAME)
 
 
 def test_export_uses_powerfactory_graphic_tab_api(tmp_path: Path) -> None:
@@ -125,3 +154,31 @@ def test_export_uses_powerfactory_graphic_tab_api(tmp_path: Path) -> None:
     assert export_powerfactory_diagram(app, diagram, output) == output.resolve()
     assert board.shown is page
     assert writer.exported == (page, str(output.resolve()))
+
+
+def test_retired_generated_annotations_are_cleared_and_hidden() -> None:
+    class _Layer:
+        loc_name = CABLE_GENERATED_LAYER_NAME
+
+        def __init__(self) -> None:
+            self.cleared = 0
+
+        def ClearData(self) -> None:
+            self.cleared += 1
+
+    class _AnnotatedDiagram:
+        def __init__(self) -> None:
+            self.layer = _Layer()
+            self.visible = None
+
+        def GetContents(self, pattern: str) -> list[object]:
+            assert pattern == "*.IntGrflayer"
+            return [self.layer]
+
+        def SetLayerVisibility(self, layer_name: str, visible: int) -> None:
+            self.visible = (layer_name, visible)
+
+    diagram = _AnnotatedDiagram()
+    assert remove_generated_cable_annotations(diagram) is diagram
+    assert diagram.layer.cleared == 1
+    assert diagram.visible == (CABLE_GENERATED_LAYER_NAME, 0)

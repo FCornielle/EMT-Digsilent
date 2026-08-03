@@ -54,3 +54,24 @@ def test_two_level_powerfactory_comres_header(tmp_path: Path) -> None:
     )
     assert result.shape == (2, 3)
     assert result.iloc[-1]["i_send_a_ka"] == pytest.approx(2.0)
+
+
+def test_two_level_header_disambiguates_same_variable_on_two_objects(tmp_path: Path) -> None:
+    raw = tmp_path / "two_lines.csv"
+    raw.write_text(
+        "Results.ElmRes;CORE.ElmLne;SHEATH.ElmLne\n"
+        '"Time in s";"Phase Current A/Terminal i in kA";'
+        '"Phase Current A/Terminal i in kA"\n'
+        "0.000000;1.25;0.15\n",
+        encoding="utf-8",
+    )
+    result = read_powerfactory_csv(
+        raw,
+        {
+            "time_s": "time",
+            "i_core_a_ka": "CORE.ElmLne | Phase Current A",
+            "i_sheath_a_ka": "SHEATH.ElmLne | Phase Current A",
+        },
+    )
+    assert result.iloc[0]["i_core_a_ka"] == pytest.approx(1.25)
+    assert result.iloc[0]["i_sheath_a_ka"] == pytest.approx(0.15)

@@ -1,11 +1,12 @@
 # Study 02 — 220 kV XLPE Cable Energization and Sheath Bonding
 
-> **Status: PowerFactory model built and API-verified; EMT baseline pending.** The
+> **Status: reproducible PowerFactory EMT baseline complete; native-diagram visual polish pending.** The
 > catalogue-derived `TypCab`, geometric `TypCabsys`, explicit core/sheath
 > `ElmLne` pair, `ElmCabsys` coupling, native-diagram layout, 24-case manifest,
-> analytical checks, and tests are implemented. PowerFactory 2024 engine
-> integration and API read-back pass. The interactive PNG export and waveform
-> baseline remain to be completed. No figure below is presented as an EMT result.
+> analytical checks, and tests are implemented. PowerFactory 2024.0.2 engine
+> integration, API read-back, all 24 EMT runs, CSV processing, metrics, and
+> curated waveform figures pass. The native PowerFactory diagram remains the
+> final collaborative drawing task.
 
 ## 1. Industrial question
 
@@ -39,8 +40,9 @@ from project specifications and manufacturer data.
 Thevenin source -> sending bus -> three-pole breaker -> core ElmLne circuit
                 -> open receiving bus
 
-screen terminals -> screen ElmLne circuit -> screen terminals
-                    ^ both ElmLne circuits coupled by ElmCabsys
+ground switch -> sending screen terminal -> screen ElmLne circuit
+                                      -> receiving screen terminal -> ground switch
+                    ^ core and screen circuits coupled by ElmCabsys
 ```
 
 PowerFactory represents the explicit-sheath example as core and screen line
@@ -60,7 +62,8 @@ cable as an overhead line:
 | Cable coupling | `ElmCabsys` | `CABLE_COUPLING_220KV_40KM` |
 | Cable geometry/type | `TypCab` / `TypCabsys` | versioned in YAML |
 | Receiving bus | `ElmTerm` | `BUS_CABLE_RECEIVING_220` |
-| Screen grounding | grounding branches/nodes | one set per bonding case |
+| Sending screen ground switch | `ElmGndswt` | `GND_SHEATH_SENDING_220` |
+| Receiving screen ground switch | `ElmGndswt` | `GND_SHEATH_RECEIVING_220` |
 | Native diagram | `IntGrfnet` | `EMT Cable Energization 220 kV` |
 
 DIgSILENT documents `ElmCabsys` for circuits with an explicit sheath and
@@ -112,10 +115,13 @@ The builder then performs these steps:
    as prescribed by the DIgSILENT bonding tutorial;
 6. requests the distributed frequency-dependent phase-domain representation,
    updates the coupling, and calls `ElmCabsys.FitParams()`;
-7. creates and activates the EMT Study Case and its result/event commands;
-8. creates or reuses the linked native PowerFactory diagram and applies the
-   deterministic two-row core/sheath layout; and
-9. writes changes to the PowerFactory database when that method is available.
+7. creates two independently controlled `ElmGndswt` screen-grounding switches;
+8. creates and activates the EMT Study Case and its result/event commands;
+9. creates a linked native PowerFactory diagram with an initial two-row
+   core/sheath layout, while preserving all manual positions on later builds;
+10. clears only the retired generated layer named `PFEMT Study Guide`, without
+   touching user-created annotation layers; and
+11. writes changes to the PowerFactory database when that method is available.
 
 Every named object is created with `create_or_get`, so rerunning the script
 updates the study instead of duplicating the network. The successful fit writes
@@ -142,13 +148,50 @@ The opt-in integration test has built and read back the actual project
 - one `ElmCabsys` linking the core line first and sheath line second, with
   `i_dist=1`, `i_model=1`, `fd_model=1`, 10 Hz to 20 kHz fitting band, and
   2 kHz main transient frequency; and
-- one linked `IntGrfnet` containing exactly nine expected graphics, with the
-  core circuit at y=55 and the sheath circuit at y=90.
+- one linked `IntGrfnet` containing exactly eleven expected electrical graphics,
+  including both real grounding switches;
+  the API creates the initial geometry once and preserves subsequent manual
+  symbol, label, title, and legend placement; and
+- no active generated title/legend overlay. Presentation annotations belong on
+  a user-created PowerFactory layer and remain outside the builder's ownership.
 
 The native diagram is stored in PowerFactory as `EMT Cable Energization 220 kV`.
 PNG export cannot be completed from the headless engine because its Graphics
 Board is unavailable; it must be run with the supplied interactive `ComPython`
 export script.
+
+### Collaborative drawing workflow
+
+Do not add, delete, reconnect, or rename electrical objects in the diagram. The
+Python builder owns network topology and parameters. Manual work is limited to
+moving symbols, moving or rotating labels, adding explanatory annotations, and
+exporting the finished page.
+
+Use [`diagram/manual_layout_reference.svg`](diagram/manual_layout_reference.svg)
+as the local drawing guide. Arrange the native PowerFactory objects as follows:
+
+1. Put the 220 kV primary path on the upper row, read from left to right:
+   `GRID_EQUIVALENT`, sending bus, `CB_CABLE_220`, cable-side bus, conductor
+   circuit, and the open receiving bus.
+2. Put the metallic-sheath path directly below the conductor cable, aligning
+   both sheath terminals vertically with the corresponding conductor terminals.
+3. Keep `CABLE_COUPLING_220KV_40KM.ElmCabsys` in the data model but do not draw a
+   fictitious electrical connection for it. The object couples the conductor
+   and sheath `ElmLne` circuits internally.
+4. Place `GND_SHEATH_SENDING_220` below the sending sheath terminal and
+   `GND_SHEATH_RECEIVING_220` below the receiving sheath terminal. These are
+   real scenario-controlled objects, not explanatory symbols.
+5. Create a user annotation layer such as `USER - Study Notes`. Do not reuse the
+   reserved legacy name `PFEMT Study Guide`.
+6. Keep object names horizontal where practical and place scenario-specific
+   bonding information in a compact legend at the right of the drawing.
+
+The electrical topology is now frozen for this benchmark. Single-point and
+both-end bonding are implemented by the two `ElmGndswt` states. The
+cross-bonded benchmark uses PowerFactory's ideal `TypCabsys` cross-bonding flag;
+it is not an explicit drawing of minor sections, transposed screen joints, link
+boxes, or sheath-voltage limiters. That more detailed topology is a deliberate
+future extension, not something to imply graphically in this base case.
 
 ## 4. Input basis
 
@@ -321,22 +364,105 @@ pattern of the explicit cable system.
 15. **State the engineering boundary.** Separate example conclusions from
     project equipment acceptance.
 
-## 8. Planned result contract
+## 8. Executed PowerFactory EMT results
+
+The versioned benchmark was executed in PowerFactory 24.0.2 with instantaneous
+EMT simulation, a 2.5 us integration/output step, a -20 ms to 120 ms window,
+and 56,002 or 56,003 samples per scenario. The complete numerical baseline is
+stored in
+[`expected/powerfactory_2024_emt_sweep.csv`](expected/powerfactory_2024_emt_sweep.csv),
+with provenance in
+[`expected/powerfactory_2024_emt_baseline.yaml`](expected/powerfactory_2024_emt_baseline.yaml).
+
+| Bonding representation | Maximum open-end voltage | Maximum core current | Maximum screen voltage | Maximum ground current |
+|---|---:|---:|---:|---:|
+| Isolated | 2.095 pu at 60 deg | 2.571 kA at 60 deg | 133.995 kV at 60 deg | 0.000 kA |
+| Single-point | 2.016 pu at 60 deg | 3.140 kA at 120 deg | 49.044 kV at 30 deg | 2.775 kA at 0 deg |
+| Both ends | 1.922 pu at 120 deg | 3.107 kA at 120 deg | 0.000 kV | 3.186 kA at 60 deg |
+| Cross-bonded, ideal `TypCabsys` | 2.195 pu at 30 deg | 3.237 kA at 60 deg | 0.000 kV | 0.066 kA at 120 deg |
+
+![Bonding and point-on-wave comparison](../../docs/assets/02_cable_bonding_pow_comparison.png)
+
+**How to read this figure.** Each marker is one executed PowerFactory EMT run,
+not an analytical estimate. The left panel shows that the governing conductor
+overvoltage depends on both point on wave and the cable-system bonding model.
+The centre panel makes the screen-voltage trade-off explicit: the isolated
+screen develops the highest voltage, single-point bonding reduces it, and the
+ideal terminal grounds clamp it in the both-end and ideal cross-bonded cases.
+The right panel shows the corresponding cost in ground-current duty. The very
+small cross-bonded terminal current is a consequence of the ideal balanced
+`TypCabsys` representation; it is not a prediction of individual link-box or
+minor-section current.
+
+### 8.1 Isolated screen: 60-degree case
+
+![Isolated-screen EMT waveforms](../../docs/assets/02_isolated_pow_060deg_waveforms.png)
+
+**What is visible and why.** With both screen grounding switches open, the
+ground-current panel remains exactly zero while the metallic screen is free to
+rise to 133.995 kV. The open receiving end produces a reflected conductor
+voltage wave, reaching 2.095 pu. The damped, multi-frequency shape follows from
+the distributed frequency-dependent cable fit and repeated end reflections;
+it cannot be reproduced by a lumped charging capacitor alone.
+
+### 8.2 Single-point bonding: 60-degree case
+
+![Single-point-bonded EMT waveforms](../../docs/assets/02_single_point_pow_060deg_waveforms.png)
+
+**What is visible and why.** The sending screen terminal is clamped by its
+closed `ElmGndswt`, so its plotted voltage remains zero. The receiving screen
+is open and oscillates, reaching 45.276 kV in this case. Screen current and
+sending-ground current overlap because that grounding branch is the only
+external return connection. This is the expected topology check before using
+the result to discuss grounding-conductor duty.
+
+### 8.3 Both-end bonding: 120-degree case
+
+![Both-end-bonded EMT waveforms](../../docs/assets/02_both_ends_pow_120deg_waveforms.png)
+
+**What is visible and why.** Both terminal screen voltages are clamped to zero,
+but the screen and grounding circuits carry substantial transient current. The
+case reaches 1.922 pu at the open conductor end and 3.107 kA core current; the
+largest both-end ground-current duty across the angle sweep occurs at 60
+degrees and is 3.186 kA. Zero terminal voltage does not imply zero stress at an
+intermediate joint, which is outside this unsectionalized benchmark.
+
+### 8.4 Ideal cross-bonding: 30-degree governing voltage case
+
+![Ideal cross-bonded EMT waveforms](../../docs/assets/02_cross_bonded_pow_030deg_waveforms.png)
+
+**What is visible and why.** PowerFactory's ideal `TypCabsys` cross-bonding
+flag cancels most balanced terminal screen current and both terminal grounds
+clamp screen voltage. At the same time, the core circuit reaches the campaign
+maximum of 394.331 kV peak, or 2.195 pu, 1.638 ms after closing. This result is
+useful for screening conductor insulation duty, but explicit minor sections,
+screen transpositions, link boxes, grounding impedances, and SVLs are required
+before interpreting local cross-bonding equipment duty.
+
+These values are benchmark outputs, not equipment acceptance limits. Their
+main educational conclusion is the trade-off: opening the screen return path
+increases terminal screen voltage, while grounding it transfers the duty into
+screen/earth current. The ideal cross-bonded option must remain clearly
+distinguished from an explicit installation model.
+
+## 9. Verified result contract
 
 | Location | Quantity | Unit |
 |---|---|---|
-| Sending core | instantaneous phase voltage/current | kV, kA |
-| Receiving core | instantaneous phase voltage/current | kV, kA |
-| Sending screen | screen-to-ground voltage/current | kV, kA |
-| Receiving screen | screen-to-ground voltage/current | kV, kA |
-| Cross-bonding joints | screen voltage/current | kV, kA |
-| Grounding branches | current and dissipated energy | kA, kJ |
-| Limiting devices | voltage, current, energy | kV, kA, kJ |
+| Receiving core terminal | instantaneous phase voltage | kV |
+| Sending core circuit | instantaneous phase current | kA |
+| Sending screen terminal | screen-to-ground phase voltage | kV |
+| Receiving screen terminal | screen-to-ground phase voltage | kV |
+| Sending screen circuit | instantaneous phase current | kA |
+| Sending/receiving grounding switches | instantaneous phase current | kA |
 
-The exact PowerFactory result-variable identifiers will be versioned only after
-they are verified against the installed cable-system model.
+All 21 configured PowerFactory result-variable identifiers were verified on
+the installed cable-system model. PowerFactory omits the current variables of
+an open `ElmGndswt` from its CSV export; the topology-aware normalizer inserts
+physical zeros only for those declared-open branches and still rejects a
+missing channel when its branch should be active.
 
-## 9. Current reproducible deliverables
+## 10. Current reproducible deliverables
 
 - configuration schema and study boundary;
 - parameter/assumption register;
@@ -347,7 +473,8 @@ they are verified against the installed cable-system model.
 - an idempotent `TypCab`/`TypCabsys`/`ElmCabsys` API builder;
 - an internal `ComPython` build script and native-diagram export script;
 - unit, regression, builder-contract, and opt-in integration tests;
-- target PowerFactory result contracts.
+- a complete 24-case EMT campaign, portable baseline, and five curated result
+  figures.
 
 Generate the current figures with:
 
@@ -360,31 +487,49 @@ The CLI also writes the same campaign to the configured output directory:
 
 ```powershell
 pfemt manifest studies/02_hv_cable_energization/configs/base.yaml
+pfemt sweep studies/02_hv_cable_energization/configs/base.yaml
+pfemt analyse studies/02_hv_cable_energization/configs/base.yaml
 ```
 
-## 10. Completion gate
+After a model milestone is verified, close the interactive application and run:
+
+```powershell
+pfemt archive studies/02_hv_cable_energization/configs/base.yaml
+```
+
+The command stores the complete project at
+`powerfactory/PFEMT_02_HV_Cable_Energization_220kV.pfd`. The archive is the
+portable PowerFactory snapshot of the engineering model; the Python/YAML files
+remain the auditable source used to reconstruct it.
+
+## 11. Completion gate
 
 Study 02 remains **Started**, not **Complete**, until all of the following are
 available. A checked item means the repository implementation exists; it does
 not substitute for reviewing the executed PowerFactory model.
 
 - [x] idempotent `TypCab`/`TypCabsys`/`ElmCabsys` PowerFactory API builder;
-- [x] deterministic native linked-diagram generator;
+- [x] native linked-diagram generator with manual-layout preservation;
 - [x] successful PowerFactory 2024 engine build and object/diagram read-back;
+- [x] exported `.pfd` project archive;
+- [ ] clean-room `.pfd` re-import check;
 - [ ] exported native diagram image from the interactive Graphics Board;
-- [ ] verified core and screen result-variable identifiers;
-- [ ] complete bonding x point-on-wave EMT campaign;
+- [x] verified core, screen, and grounding result-variable identifiers;
+- [x] complete bonding x point-on-wave EMT campaign;
 - [ ] time-step and frequency-band sensitivity;
 - [ ] frequency-sweep versus EMT/FFT comparison;
-- [ ] compact PowerFactory baseline and curated result figures.
+- [x] compact PowerFactory baseline and curated result figures.
 
-## 11. Technical references
+## 12. Technical references
 
 - [DIgSILENT: configure overhead-line and cable models for EMT](https://www.digsilent.de/index.php/en/faq-reader-powerfactory/how-to-configure-overhead-line-and-cable-models-for-emt-simulations.html)
 - [DIgSILENT: overhead-line and cable modelling objects](https://www.digsilent.de/en/faq-reader-powerfactory/how-do-you-model-overhead-lines-and-cables-in-powerfactory.html)
 - [DIgSILENT: `ElmCabsys` with `TypCabsys` and single-core `TypCab`](https://www.digsilent.de/en/faq-reader-powerfactory/how-do-you-model-cables-in-a-pipe.html)
 - [DIgSILENT: isolated, single-point, both-end, and cross-bonded screens](https://www.digsilent.de/en/faq-reader-powerfactory/how-do-you-model-the-bonding-of-cables-isolated-single-and-double-bonded.html)
+- [DIgSILENT: explicit and ideal cross-bonding modelling](https://www.digsilent.de/index.php/en/faq-reader-powerfactory/how-do-you-model-cross-bonding-in-cable-systems.html)
 - [DIgSILENT: detailed cable/sheath voltage and current profiles with Python](https://www.digsilent.de/en/faq-reader-powerfactory/do-you-have-a-python-script-to-calculate-the-voltage-and-current-in-a-line-as-function-of-distance.html)
 - [DIgSILENT: validate cable EMT models with frequency sweep and EMT/FFT](https://www.digsilent.de/en/faq-reader-powerfactory/how-can-you-validate-cable-and-overhead-line-models-for-emt-simulations/category/dynamic-simulation.html)
 - [DIgSILENT: export plots and network diagrams with Python](https://www.digsilent.de/index.php/en/faq-reader-powerfactory/how-can-i-automatically-export-all-plots-available-in-a-project.html)
+- [DIgSILENT: export an inactive project with `ComPfdexport`](https://www.digsilent.de/en/faq-reader-powerfactory/how-to-export-a-project-in-pfd-format-via-the-api.html)
+- [CIGRE TB 797 overview: sheath-bonding layouts and design elements](https://electra.cigre.org/309-april-2020/technical-brochures/sheath-bonding-systems-of-ac-transmission-cables-design-testing-and-maintenance.html)
 - [ABB: XLPE Submarine Cable Systems, Table 37](https://resources.news.e.abb.com/attachments/published/13326/en-US/55ED60680654/XLPE-Submarine-Cable-Systems-2GM5007-.pdf)

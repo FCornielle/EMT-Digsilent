@@ -7,7 +7,7 @@ import json
 from typing import Any, Dict, Mapping
 
 from pfemt.builders.common import connect, create_or_activate_project, grid, study_case
-from pfemt.cable import cable_geometry
+from pfemt.cable import CableScenario, cable_geometry
 from pfemt.diagram import ensure_cable_energization_diagram
 from pfemt.errors import PowerFactoryExecutionError
 from pfemt.pfapi import create_or_get, set_attribute
@@ -118,6 +118,25 @@ def _cable_system_type(app: Any, config: Mapping[str, Any], cable_type: Any) -> 
     return system_type
 
 
+def _execute_cable_fit(cable_system: Any) -> None:
+    """Update and fit the currently configured cable-system representation."""
+    update = getattr(cable_system, "Update", None)
+    if callable(update):
+        update_code = update()
+        if update_code not in (None, 0):
+            raise PowerFactoryExecutionError(
+                "Cable-system update failed with return code {}".format(update_code)
+            )
+    fit = getattr(cable_system, "FitParams", None)
+    if not callable(fit):
+        raise PowerFactoryExecutionError("ElmCabsys does not expose FitParams()")
+    fit_code = fit()
+    if fit_code not in (None, 0):
+        raise PowerFactoryExecutionError(
+            "Frequency-dependent cable fitting failed with return code {}".format(fit_code)
+        )
+
+
 def _fit_cable_system(cable_system: Any, config: Mapping[str, Any]) -> None:
     """Configure and calculate the frequency-dependent EMT representation."""
     emt = config["network"]["cable"]["emt_model"]
@@ -136,21 +155,7 @@ def _fit_cable_system(cable_system: Any, config: Mapping[str, Any]) -> None:
     signature_line = "PFEMT_FIT_SHA256={}".format(signature)
     if signature_line in descriptions:
         return
-    update = getattr(cable_system, "Update", None)
-    if callable(update):
-        update_code = update()
-        if update_code not in (None, 0):
-            raise PowerFactoryExecutionError(
-                "Cable-system update failed with return code {}".format(update_code)
-            )
-    fit = getattr(cable_system, "FitParams", None)
-    if not callable(fit):
-        raise PowerFactoryExecutionError("ElmCabsys does not expose FitParams()")
-    fit_code = fit()
-    if fit_code not in (None, 0):
-        raise PowerFactoryExecutionError(
-            "Frequency-dependent cable fitting failed with return code {}".format(fit_code)
-        )
+    _execute_cable_fit(cable_system)
     set_attribute(
         cable_system,
         "desc",
@@ -160,6 +165,22 @@ def _fit_cable_system(cable_system: Any, config: Mapping[str, Any]) -> None:
         ],
         required=False,
     )
+
+
+def apply_cable_bonding_scenario(objects: Mapping[str, Any], scenario: CableScenario) -> None:
+    """Apply one screen-bonding topology and refit when cross-bonding changes."""
+    set_attribute(objects["sheath_ground_sending"], "on_off", int(scenario.grounded_sending))
+    set_attribute(
+        objects["sheath_ground_receiving"],
+        "on_off",
+        int(scenario.grounded_receiving),
+    )
+    cable_system_type = objects["cable_system_type"]
+    requested_bond = [1.0 if scenario.cross_bonded else 0.0]
+    current_bond = [float(value) for value in cable_system_type.GetAttribute("bond")]
+    if current_bond != requested_bond:
+        set_attribute(cable_system_type, "bond", requested_bond)
+        _execute_cable_fit(objects["cable_system"])
 
 
 def _fit_signature(config: Mapping[str, Any]) -> str:
@@ -225,6 +246,30 @@ def build_cable_energization_model(app: Any, config: Mapping[str, Any]) -> Dict[
         "CUB_{}_2".format(names["sheath_line"]),
     )
 
+    sheath_ground_sending = create_or_get(
+        grid_model,
+        "ElmGndswt",
+        names["sheath_ground_sending"],
+    )
+    sheath_ground_receiving = create_or_get(
+        grid_model,
+        "ElmGndswt",
+        names["sheath_ground_receiving"],
+    )
+    for grounding_switch, terminal, suffix in (
+        (sheath_ground_sending, sheath_sending, "SEND"),
+        (sheath_ground_receiving, sheath_receiving, "RECV"),
+    ):
+        set_attribute(grounding_switch, "nphase", 3)
+        set_attribute(grounding_switch, "nneutral", 0)
+        set_attribute(grounding_switch, "on_off", 0)
+        connect(
+            grounding_switch,
+            terminal,
+            "bus1",
+            "CUB_GND_SHEATH_{}".format(suffix),
+        )
+
     cable_system = create_or_get(grid_model, "ElmCabsys", names["cable_system"])
     set_attribute(cable_system, "typ_id", cable_system_type)
     # The ordering is the one requested by PowerFactory's bonding tutorial:
@@ -257,6 +302,8 @@ def build_cable_energization_model(app: Any, config: Mapping[str, Any]) -> Dict[
         "breaker": breaker,
         "core_line": core_line,
         "sheath_line": sheath_line,
+        "sheath_ground_sending": sheath_ground_sending,
+        "sheath_ground_receiving": sheath_ground_receiving,
         "cable_system": cable_system,
         "cable_type": cable_type,
         "cable_system_type": cable_system_type,

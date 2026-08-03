@@ -8,9 +8,15 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from pfemt.errors import PowerFactoryUnavailable
+
+# ``os.add_dll_directory`` returns a handle whose finalizer removes the path
+# from the process DLL search directories. Keep one handle per installation
+# alive for as long as this module is loaded; PowerFactory loads additional
+# native dependencies after ``powerfactory.pyd`` itself has been imported.
+_DLL_DIRECTORY_HANDLES: Dict[str, Any] = {}
 
 
 @dataclass(frozen=True)
@@ -78,7 +84,9 @@ def import_powerfactory(home: Optional[Path] = None) -> Any:
 
     dll_adder = getattr(os, "add_dll_directory", None)
     if callable(dll_adder):
-        dll_adder(str(installation.home))
+        home_key = str(installation.home)
+        if home_key not in _DLL_DIRECTORY_HANDLES:
+            _DLL_DIRECTORY_HANDLES[home_key] = dll_adder(home_key)
     module_path = str(installation.python_module)
     if module_path not in sys.path:
         sys.path.insert(0, module_path)

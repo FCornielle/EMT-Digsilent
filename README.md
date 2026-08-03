@@ -24,7 +24,7 @@ The repository distinguishes four maturity levels:
 | ID | Study | Primary decision metric | Status |
 |---:|---|---|---|
 | 01 | [230 kV line energization and point on wave](studies/01_line_energization/README.md) | open-end peak voltage | **Verified baseline** |
-| 02 | [220 kV cable energization and sheath bonding](studies/02_hv_cable_energization/README.md) | core/screen voltage and current | **Engineering basis** |
+| 02 | [220 kV cable energization and sheath bonding](studies/02_hv_cable_energization/README.md) | core/screen voltage and current | **Verified baseline** |
 | 03 | [Transformer energization and inrush](studies/03_transformer_energization/README.md) | inrush, flux, harmonics | Planned |
 | 04 | [Capacitor-bank energization](studies/04_capacitor_bank_energization/README.md) | inrush peak/frequency and duty | Planned |
 | 05 | [Transformer saturation sensitivity](studies/05_transformer_saturation_sensitivity/README.md) | residual-flux/inrush envelope | Planned |
@@ -100,7 +100,7 @@ case is within 0.1% of the 1.25 us reference, while the 10 us regression baselin
 underestimates both peaks by about 1%; a completed run is therefore not, by
 itself, evidence of numerical convergence.
 
-## Study 02 — started 220 kV cable energization
+## Study 02 — verified 220 kV cable energization
 
 ### Question and target model
 
@@ -112,9 +112,10 @@ The implemented builder creates catalogue-derived geometric `TypCab`/
 `TypCabsys` data, separate core and sheath `ElmLne` circuits, their `ElmCabsys`
 coupling, and a distributed frequency-dependent phase-domain representation.
 PowerFactory 2024 engine construction and API read-back pass; interactive native
-diagram export and the bonding sweep are the next gates.
+diagram export remains a collaborative visual task. The Python API has executed
+and processed all 24 bonding-by-point-on-wave cases.
 
-### Current engineering basis
+### Engineering basis
 
 | Quantity | First-order value |
 |---|---:|
@@ -125,9 +126,9 @@ diagram export and the bonding sweep are the next gates.
 | One-way travel time | **0.652 ms** |
 | Samples per travel time at 2.5 us | **approximately 261** |
 
-These are analytical scale checks, not EMT results. The exact status,
-assumptions, object/result contract, bonding scenarios, and completion gate are
-documented in the
+These remain analytical scale checks, not EMT results. The assumptions,
+object/result contract, bonding scenarios, executed baseline, and completion
+gate are documented in the
 [Study 02 README](studies/02_hv_cable_energization/README.md).
 
 A read-only PowerFactory 2024 schema preflight now verifies the installed
@@ -136,7 +137,7 @@ builder. The dimensions, capacitance, and inductance are tied to the ABB Table
 37 row for a 220 kV, 1,200 mm² copper single-core cable; installation and
 unspecified material properties remain explicit teaching assumptions.
 
-### Initial figures
+### Design-basis figures
 
 ![Study 02 cable parameter basis](docs/assets/02_cable_parameter_overview.png)
 
@@ -166,6 +167,35 @@ The right panel verifies the 50 Hz angle-to-event-time conversion from 20.0 to
 28.33 ms. The colors separate bonding topologies only and do not represent EMT
 severity.
 
+### Verified PowerFactory EMT results
+
+| KPI | Result |
+|---|---:|
+| Maximum open-end conductor voltage | **2.195 pu / 394.331 kV peak** |
+| Governing case | **ideal cross-bonded, 30 degrees** |
+| Maximum metallic-screen voltage | **133.995 kV peak** |
+| Governing screen-voltage case | **isolated, 60 degrees** |
+| Maximum ground current | **3.186 kA peak** |
+| Governing ground-current case | **both ends, 60 degrees** |
+| EMT cases | **24** |
+
+![Study 02 bonding and point-on-wave EMT comparison](docs/assets/02_cable_bonding_pow_comparison.png)
+
+Every marker is an executed PowerFactory EMT case. The comparison shows the
+central engineering trade-off: isolated screens experience the greatest
+terminal screen voltage; grounding suppresses that voltage but transfers the
+duty into grounding current. The ideal `TypCabsys` cross-bonded model gives the
+largest conductor overvoltage in this benchmark but does not resolve individual
+link boxes or minor sections.
+
+![Study 02 governing EMT waveforms](docs/assets/02_cross_bonded_pow_030deg_waveforms.png)
+
+The four panels align the breaker closing instant with receiving-end conductor
+voltage, sending-end core current, terminal screen voltage, and screen/ground
+current. The 394.331 kV peak occurs 1.638 ms after closing. Both terminal screen
+voltages remain clamped in this ideal representation; explicit sectional
+cross-bonding is required before evaluating local joint or SVL duty.
+
 ## Common engineering workflow
 
 1. Define the decision, KPI, units, bases, and acceptance-source provenance.
@@ -179,7 +209,9 @@ severity.
 9. Compare against analytical checks and compact regression references.
 10. Verify time step, model bandwidth, and governing uncertainties.
 11. Generate native diagrams and multiple reviewable result figures.
-12. State limitations before using an example in an equipment decision.
+12. Export the complete inactive PowerFactory project to its versioned `.pfd`
+    path inside the study folder.
+13. State limitations before using an example in an equipment decision.
 
 ## Quick start
 
@@ -204,20 +236,25 @@ pfemt build studies/01_line_energization/configs/base.yaml
 pfemt sweep studies/01_line_energization/configs/base.yaml
 pfemt sensitivity studies/01_line_energization/configs/base.yaml
 pfemt analyse studies/01_line_energization/configs/base.yaml
+pfemt archive studies/01_line_energization/configs/base.yaml
 ```
 
 For the native diagram, run the supplied `*_inside_powerfactory.py` scripts from
 interactive `ComPython` objects as explained in the Study 01 README.
 
-### Reproduce the current Study 02 design basis and API model
+### Reproduce Study 02
 
 ```powershell
 pfemt validate studies/02_hv_cable_energization/configs/base.yaml
 pfemt manifest studies/02_hv_cable_energization/configs/base.yaml
+pfemt build studies/02_hv_cable_energization/configs/base.yaml
+pfemt sweep studies/02_hv_cable_energization/configs/base.yaml
+pfemt analyse studies/02_hv_cable_energization/configs/base.yaml
 python studies/02_hv_cable_energization/scripts/generate_design_figures.py
 python studies/02_hv_cable_energization/scripts/generate_scenario_manifest.py
 python studies/02_hv_cable_energization/scripts/inspect_installed_cable_schema.py `
   --output studies/02_hv_cable_energization/outputs/powerfactory_cable_schema.json
+pfemt archive studies/02_hv_cable_energization/configs/base.yaml
 ```
 
 For the native model, select
@@ -225,7 +262,12 @@ For the native model, select
 from an interactive `ComPython` object. Run the companion
 `export_diagram_inside_powerfactory.py` script after visually reviewing the
 linked diagram. The Study 02 README documents the exact steps and the remaining
-gates before any EMT result can be published.
+advanced validation gates.
+
+Run `pfemt archive` from a terminal with the interactive PowerFactory window
+closed. The command builds the current model, temporarily deactivates it as
+required by `ComPfdexport`, writes the configured `.pfd` atomically, and
+reactivates the project before exiting.
 
 ## Repository structure
 
@@ -235,7 +277,7 @@ gates before any EMT result can be published.
 |-- src/pfemt/                reusable PowerFactory and analysis modules
 |-- studies/
 |   |-- 01_line_energization/ complete verified vertical slice
-|   |-- 02_hv_cable_energization/ engineering basis in progress
+|   |-- 02_hv_cable_energization/ verified EMT baseline
 |   `-- 03...12/             study-specific implementation contracts
 |-- tests/                    unit, regression, plotting, integration tests
 `-- config/                   connection examples without secrets

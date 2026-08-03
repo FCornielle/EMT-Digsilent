@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import platform
 import sys
@@ -13,8 +14,19 @@ from typing import Any, Dict, Mapping, Optional
 import pandas as pd
 
 from pfemt.application import connect
-from pfemt.builders.cable_energization import build_cable_energization_model
+from pfemt.builders.cable_energization import (
+    apply_cable_bonding_scenario,
+    build_cable_energization_model,
+)
 from pfemt.builders.line_energization import build_line_energization_model
+from pfemt.cable import (
+    CableScenario,
+    cable_energization_metrics,
+    cable_scenarios,
+    export_cable_scenario_manifest,
+    inactive_ground_result_channels,
+)
+from pfemt.cable_plotting import plot_cable_emt_waveforms, plot_cable_sweep_summary
 from pfemt.config import load_yaml, resolve_from_config, validate_study_config
 from pfemt.diagram import export_powerfactory_diagram
 from pfemt.errors import ResultFormatError
@@ -34,7 +46,7 @@ from pfemt.plotting import (
     plot_timestep_sensitivity,
     plot_travelling_wave_detail,
 )
-from pfemt.project import activate_project, activate_study_case
+from pfemt.project import activate_project, activate_study_case, export_powerfactory_project
 from pfemt.reporting import line_energization_report, write_metrics
 from pfemt.results import export_csv, register_channels, result_object
 from pfemt.scenarios import Scenario, export_manifest, point_on_wave_scenarios
@@ -74,6 +86,28 @@ def export_diagram(config: Mapping[str, Any], app: Optional[Any] = None) -> Path
         pf_app,
         objects["diagram"],
         output_directory(config) / "figures" / "powerfactory_single_line.png",
+    )
+
+
+def archive_project(config: Mapping[str, Any], app: Optional[Any] = None) -> Path:
+    """Build and archive the complete PowerFactory project beside its study."""
+    validate_study_config(config)
+    destination = config["outputs"].get("project_archive")
+    if destination:
+        archive_path = resolve_from_config(config, str(destination))
+    else:
+        config_directory = Path(str(config.get("_meta", {}).get("directory", ".")))
+        archive_path = (
+            config_directory.parent
+            / "powerfactory"
+            / "{}.pfd".format(config["powerfactory"]["project"])
+        ).resolve()
+    pf_app = app or connect(config)
+    objects = build(config, pf_app)
+    return export_powerfactory_project(
+        pf_app,
+        objects["project"],
+        archive_path,
     )
 
 
@@ -118,6 +152,106 @@ def run_scenario(
     )
     run_emt(active["initial_conditions"], active["simulation"])
     return export_csv(app, active["result"], destination)
+
+
+def run_cable_scenario(
+    app: Any,
+    config: Mapping[str, Any],
+    objects: Mapping[str, Any],
+    scenario: CableScenario,
+    destination: Path,
+) -> Path:
+    """Apply one cable bonding/point-on-wave case, run EMT, and export CSV."""
+    configure_emt(objects["initial_conditions"], objects["simulation"], config)
+    register_channels(app, objects["result"], config["results"]["channels"])
+    set_attribute(objects["source"], "usetp", scenario.source_voltage_pu)
+    for line_name in ("core_line", "sheath_line"):
+        set_attribute(objects[line_name], "dline", scenario.cable_length_km)
+    set_attribute(objects["breaker"], "on_off", 0)
+    apply_cable_bonding_scenario(objects, scenario)
+    closing = config["events"]["closing"]
+    configure_switch_event(
+        objects["initial_conditions"],
+        objects["breaker"],
+        closing["name"],
+        scenario.switching_time_s,
+        int(closing.get("action", 1)),
+    )
+    run_emt(objects["initial_conditions"], objects["simulation"])
+    return export_csv(app, objects["result"], destination)
+
+
+def run_cable_sweep(config: Mapping[str, Any], app: Optional[Any] = None) -> Path:
+    """Run the full bonding-by-point-on-wave cable campaign."""
+    validate_study_config(config)
+    pf_app = app or connect(config)
+    objects = build_cable_energization_model(pf_app, config)
+    output = output_directory(config)
+    scenarios = cable_scenarios(config)
+    export_cable_scenario_manifest(scenarios, output / "scenario_manifest.csv")
+    raw = output / "raw"
+    raw.mkdir(parents=True, exist_ok=True)
+    signature_payload = {key: value for key, value in config.items() if key != "_meta"}
+    campaign_signature = hashlib.sha256(
+        json.dumps(signature_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest().upper()
+    checkpoint_path = raw / ".campaign_state.json"
+    completed = set()
+    if checkpoint_path.is_file():
+        checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+        if checkpoint.get("configuration_sha256") == campaign_signature:
+            completed = set(checkpoint.get("completed_scenarios", []))
+    try:
+        for index, scenario in enumerate(scenarios, start=1):
+            scenario_output = raw / "{}.csv".format(scenario.scenario_id)
+            progress = "PFEMT Study 02: case {}/{} - {}".format(
+                index, len(scenarios), scenario.scenario_id
+            )
+            if scenario.scenario_id in completed and scenario_output.is_file():
+                print("{} [cached]".format(progress), flush=True)
+                continue
+            print(progress, flush=True)
+            pf_app.PrintPlain(progress)
+            run_cable_scenario(
+                pf_app,
+                config,
+                objects,
+                scenario,
+                scenario_output,
+            )
+            completed.add(scenario.scenario_id)
+            checkpoint = {
+                "configuration_sha256": campaign_signature,
+                "completed_scenarios": sorted(completed),
+                "updated_utc": datetime.now(timezone.utc).isoformat(),
+            }
+            checkpoint_temporary = checkpoint_path.with_suffix(".partial.json")
+            checkpoint_temporary.write_text(
+                json.dumps(checkpoint, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            checkpoint_temporary.replace(checkpoint_path)
+    finally:
+        isolated = next(
+            scenario for scenario in scenarios if scenario.bonding_id == "isolated"
+        )
+        apply_cable_bonding_scenario(objects, isolated)
+        set_attribute(objects["breaker"], "on_off", 0)
+    write_run_metadata(
+        config,
+        output / "run_metadata.json",
+        {
+            "completed_utc": datetime.now(timezone.utc).isoformat(),
+            "python_version": sys.version.split()[0],
+            "platform": platform.platform(),
+            "powerfactory_user": pf_app.GetCurrentUser().loc_name,
+            "project": config["powerfactory"]["project"],
+            "study_case": config["powerfactory"]["study_case"],
+            "scenario_count": len(scenarios),
+            "campaign": "bonding_by_point_on_wave",
+        },
+    )
+    return output
 
 
 def run_point_on_wave_sweep(
@@ -205,6 +339,92 @@ def analyse_csv(
         "figure": str(figure),
         "report": str(report),
     }
+
+
+def analyse_cable_csv(
+    config: Mapping[str, Any],
+    source_csv: Path,
+    scenario: CableScenario,
+    destination: Optional[Path] = None,
+) -> Dict[str, object]:
+    """Normalize and analyse one Study 02 PowerFactory CSV export."""
+    output = destination or output_directory(config)
+    column_map = dict(config["analysis"]["column_map"])
+    zero_channels = inactive_ground_result_channels(scenario)
+    for column in zero_channels:
+        column_map.pop(column)
+    frame = read_powerfactory_csv(
+        source_csv,
+        column_map,
+        config["analysis"].get("decimal", "."),
+    )
+    for column in zero_channels:
+        frame[column] = 0.0
+    normalized_csv = write_normalized_csv(
+        frame,
+        output / "normalized" / "{}.csv".format(scenario.scenario_id),
+    )
+    metrics = cable_energization_metrics(
+        frame,
+        float(config["network"]["nominal_voltage_kv"]),
+        scenario.switching_time_s,
+    )
+    row: Dict[str, object] = {
+        "scenario_id": scenario.scenario_id,
+        "bonding_id": scenario.bonding_id,
+        "bonding_label": scenario.bonding_label,
+        "switching_angle_deg": scenario.switching_angle_deg,
+        "switching_time_s": scenario.switching_time_s,
+        "grounded_sending": scenario.grounded_sending,
+        "grounded_receiving": scenario.grounded_receiving,
+        "cross_bonded": scenario.cross_bonded,
+        **metrics,
+    }
+    metrics_file = write_metrics(
+        row,
+        output / "metrics" / "{}.json".format(scenario.scenario_id),
+    )
+    figure = plot_cable_emt_waveforms(
+        frame,
+        scenario,
+        row,
+        output / "figures" / "{}_waveforms.png".format(scenario.scenario_id),
+    )
+    return {
+        **row,
+        "normalized_csv": str(normalized_csv),
+        "metrics_file": str(metrics_file),
+        "figure": str(figure),
+    }
+
+
+def analyse_cable_sweep(
+    config: Mapping[str, Any], directory: Optional[Path] = None
+) -> Path:
+    """Analyse all 24 cable cases and rank their conductor/sheath stresses."""
+    output = directory or output_directory(config)
+    rows = [
+        analyse_cable_csv(
+            config,
+            output / "raw" / "{}.csv".format(scenario.scenario_id),
+            scenario,
+            output,
+        )
+        for scenario in cable_scenarios(config)
+    ]
+    summary = (
+        pd.DataFrame(rows)
+        .drop(columns=["normalized_csv", "metrics_file", "figure"])
+        .sort_values("core_voltage_peak_pu", ascending=False)
+    )
+    destination = output / "sweep_summary.csv"
+    summary.to_csv(destination, index=False, float_format="%.10g")
+    plot_cable_sweep_summary(summary, output / "figures" / "bonding_pow_comparison.png")
+    write_metrics(
+        summary.iloc[0].to_dict(),
+        output / "metrics" / "worst_case.json",
+    )
+    return destination
 
 
 def analyse_sweep(config: Mapping[str, Any], directory: Optional[Path] = None) -> Path:

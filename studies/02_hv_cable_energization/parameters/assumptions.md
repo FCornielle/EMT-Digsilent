@@ -4,9 +4,10 @@
 
 Study 02 has an idempotent PowerFactory API builder, a parameter register,
 bonding matrix, analytical checks, plotting pipeline, native-diagram layout,
-and PowerFactory object contract. The builder still requires execution and
-visual review in the interactive PowerFactory 2024 application. An EMT waveform
-or numerical baseline is not claimed yet.
+and verified PowerFactory result contract. The 24-case EMT campaign has been
+executed in PowerFactory 24.0.2 and its compact numerical baseline and curated
+figures are versioned. The native diagram still requires final visual review
+and export from the interactive Graphics Board.
 
 ## Model boundary
 
@@ -15,7 +16,9 @@ or numerical baseline is not claimed yet.
 - Open receiving end for the first switching benchmark.
 - Metallic screen represented explicitly in the target `TypCab`/`TypCabsys`
   implementation.
-- Isolated, single-point, both-end, and cross-bonded screen alternatives.
+- Isolated, single-point, and both-end screen alternatives use two explicit
+  `ElmGndswt` objects; the cross-bonded benchmark uses the ideal `TypCabsys`
+  bonding flag rather than explicit minor sections and link boxes.
 - Arresters, terminal sealing ends, joint resistances, and shunt reactors are
   deferred until the basic cable-system model is verified.
 

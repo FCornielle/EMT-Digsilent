@@ -18,6 +18,7 @@ Thumbs.db
 *.pfd
 *.dz
 *.bak
+!studies/*/powerfactory/*.pfd
 
 # Study artefacts (regenerable)
 artifacts/**

@@ -27,6 +27,8 @@ objects:
   sheath_sending_bus: BUS_SHEATH_SENDING_220
   sheath_receiving_bus: BUS_SHEATH_RECEIVING_220
   sheath_line: CABLE_SHEATH_220KV_40KM
+  sheath_ground_sending: GND_SHEATH_SENDING_220
+  sheath_ground_receiving: GND_SHEATH_RECEIVING_220
   cable_system: CABLE_COUPLING_220KV_40KM
 
 network:
@@ -99,7 +101,8 @@ bonding_cases:
     grounded_receiving: true
     cross_bonded: false
   - id: cross_bonded
-    label: Cross-bonded
+    # Ideal section transposition represented by the TypCabsys bonding flag.
+    label: Cross-bonded (ideal TypCabsys)
     grounded_sending: true
     grounded_receiving: true
     cross_bonded: true
@@ -115,6 +118,82 @@ simulation:
   output_step_s: 0.0000025
   mode: instantaneous_emt
   mode_code: ins
+
+events:
+  closing:
+    name: CLOSE_CB_CABLE
+    action: 1
+
+results:
+  channels:
+    - object: BUS_CABLE_RECEIVING_220.ElmTerm
+      variable: m:U:A
+    - object: BUS_CABLE_RECEIVING_220.ElmTerm
+      variable: m:U:B
+    - object: BUS_CABLE_RECEIVING_220.ElmTerm
+      variable: m:U:C
+    - object: BUS_SHEATH_SENDING_220.ElmTerm
+      variable: m:U:A
+    - object: BUS_SHEATH_SENDING_220.ElmTerm
+      variable: m:U:B
+    - object: BUS_SHEATH_SENDING_220.ElmTerm
+      variable: m:U:C
+    - object: BUS_SHEATH_RECEIVING_220.ElmTerm
+      variable: m:U:A
+    - object: BUS_SHEATH_RECEIVING_220.ElmTerm
+      variable: m:U:B
+    - object: BUS_SHEATH_RECEIVING_220.ElmTerm
+      variable: m:U:C
+    - object: CABLE_CORE_220KV_40KM.ElmLne
+      variable: m:I:bus1:A
+    - object: CABLE_CORE_220KV_40KM.ElmLne
+      variable: m:I:bus1:B
+    - object: CABLE_CORE_220KV_40KM.ElmLne
+      variable: m:I:bus1:C
+    - object: CABLE_SHEATH_220KV_40KM.ElmLne
+      variable: m:I:bus1:A
+    - object: CABLE_SHEATH_220KV_40KM.ElmLne
+      variable: m:I:bus1:B
+    - object: CABLE_SHEATH_220KV_40KM.ElmLne
+      variable: m:I:bus1:C
+    - object: GND_SHEATH_SENDING_220.ElmGndswt
+      variable: m:I:bus1:A
+    - object: GND_SHEATH_SENDING_220.ElmGndswt
+      variable: m:I:bus1:B
+    - object: GND_SHEATH_SENDING_220.ElmGndswt
+      variable: m:I:bus1:C
+    - object: GND_SHEATH_RECEIVING_220.ElmGndswt
+      variable: m:I:bus1:A
+    - object: GND_SHEATH_RECEIVING_220.ElmGndswt
+      variable: m:I:bus1:B
+    - object: GND_SHEATH_RECEIVING_220.ElmGndswt
+      variable: m:I:bus1:C
+
+analysis:
+  decimal: "."
+  column_map:
+    time_s: time
+    v_core_recv_a_kv: BUS_CABLE_RECEIVING_220.ElmTerm | Phase Voltage A
+    v_core_recv_b_kv: BUS_CABLE_RECEIVING_220.ElmTerm | Phase Voltage B
+    v_core_recv_c_kv: BUS_CABLE_RECEIVING_220.ElmTerm | Phase Voltage C
+    v_sheath_send_a_kv: BUS_SHEATH_SENDING_220.ElmTerm | Phase Voltage A
+    v_sheath_send_b_kv: BUS_SHEATH_SENDING_220.ElmTerm | Phase Voltage B
+    v_sheath_send_c_kv: BUS_SHEATH_SENDING_220.ElmTerm | Phase Voltage C
+    v_sheath_recv_a_kv: BUS_SHEATH_RECEIVING_220.ElmTerm | Phase Voltage A
+    v_sheath_recv_b_kv: BUS_SHEATH_RECEIVING_220.ElmTerm | Phase Voltage B
+    v_sheath_recv_c_kv: BUS_SHEATH_RECEIVING_220.ElmTerm | Phase Voltage C
+    i_core_send_a_ka: CABLE_CORE_220KV_40KM.ElmLne | Phase Current A/Terminal i
+    i_core_send_b_ka: CABLE_CORE_220KV_40KM.ElmLne | Phase Current B/Terminal i
+    i_core_send_c_ka: CABLE_CORE_220KV_40KM.ElmLne | Phase Current C/Terminal i
+    i_sheath_send_a_ka: CABLE_SHEATH_220KV_40KM.ElmLne | Phase Current A/Terminal i
+    i_sheath_send_b_ka: CABLE_SHEATH_220KV_40KM.ElmLne | Phase Current B/Terminal i
+    i_sheath_send_c_ka: CABLE_SHEATH_220KV_40KM.ElmLne | Phase Current C/Terminal i
+    i_ground_send_a_ka: GND_SHEATH_SENDING_220.ElmGndswt | Phase Current A in kA
+    i_ground_send_b_ka: GND_SHEATH_SENDING_220.ElmGndswt | Phase Current B in kA
+    i_ground_send_c_ka: GND_SHEATH_SENDING_220.ElmGndswt | Phase Current C in kA
+    i_ground_recv_a_ka: GND_SHEATH_RECEIVING_220.ElmGndswt | Phase Current A in kA
+    i_ground_recv_b_ka: GND_SHEATH_RECEIVING_220.ElmGndswt | Phase Current B in kA
+    i_ground_recv_c_ka: GND_SHEATH_RECEIVING_220.ElmGndswt | Phase Current C in kA
 
 outputs:
   directory: ../outputs

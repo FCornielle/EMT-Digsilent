@@ -308,10 +308,13 @@ pfemt build configs/base.yaml
 pfemt sweep configs/base.yaml
 pfemt sensitivity configs/base.yaml
 pfemt analyse configs/base.yaml
+pfemt archive configs/base.yaml
 ```
 
 The diagram export is intentionally performed inside the interactive
 PowerFactory application because it requires an active Graphics Board.
+Run the archive command with the interactive application closed; it stores the
+complete project at `powerfactory/PFEMT_01_Line_Energization_230kV.pfd`.
 
 ## 8. Acceptance checklist for adapting the example
 

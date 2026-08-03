@@ -47,6 +47,28 @@ class CableGeometry:
     overall_diameter_mm: float
 
 
+def inactive_ground_result_channels(scenario: CableScenario) -> List[str]:
+    """Return zero-valued channels omitted by PowerFactory for open ground switches."""
+    channels: List[str] = []
+    if not scenario.grounded_sending:
+        channels.extend(
+            [
+                "i_ground_send_a_ka",
+                "i_ground_send_b_ka",
+                "i_ground_send_c_ka",
+            ]
+        )
+    if not scenario.grounded_receiving:
+        channels.extend(
+            [
+                "i_ground_recv_a_ka",
+                "i_ground_recv_b_ka",
+                "i_ground_recv_c_ka",
+            ]
+        )
+    return channels
+
+
 def cable_geometry(config: Mapping[str, object]) -> CableGeometry:
     """Derive the PowerFactory layer geometry and validate radial consistency.
 
@@ -286,3 +308,75 @@ def export_cable_scenario_manifest(
         writer.writeheader()
         writer.writerows(rows)
     return output
+
+
+def cable_energization_metrics(
+    frame: pd.DataFrame,
+    nominal_voltage_kv: float,
+    switching_time_s: float,
+) -> Dict[str, object]:
+    """Calculate comparable EMT peaks after the cable closing event."""
+    post_event = frame.loc[frame["time_s"] >= switching_time_s].copy()
+    if post_event.empty:
+        raise ConfigurationError("Cable result data contains no samples after switching")
+
+    groups = {
+        ("core_voltage", "kv"): [
+            "v_core_recv_a_kv",
+            "v_core_recv_b_kv",
+            "v_core_recv_c_kv",
+        ],
+        ("core_current", "ka"): [
+            "i_core_send_a_ka",
+            "i_core_send_b_ka",
+            "i_core_send_c_ka",
+        ],
+        ("sheath_voltage", "kv"): [
+            "v_sheath_send_a_kv",
+            "v_sheath_send_b_kv",
+            "v_sheath_send_c_kv",
+            "v_sheath_recv_a_kv",
+            "v_sheath_recv_b_kv",
+            "v_sheath_recv_c_kv",
+        ],
+        ("sheath_current", "ka"): [
+            "i_sheath_send_a_ka",
+            "i_sheath_send_b_ka",
+            "i_sheath_send_c_ka",
+        ],
+        ("ground_current", "ka"): [
+            "i_ground_send_a_ka",
+            "i_ground_send_b_ka",
+            "i_ground_send_c_ka",
+            "i_ground_recv_a_ka",
+            "i_ground_recv_b_ka",
+            "i_ground_recv_c_ka",
+        ],
+    }
+    missing = sorted(
+        {column for columns in groups.values() for column in columns} - set(post_event.columns)
+    )
+    if missing:
+        raise ConfigurationError(
+            "Cable result data is missing metric columns: {}".format(", ".join(missing))
+        )
+
+    metrics: Dict[str, object] = {}
+    for (group_name, unit), columns in groups.items():
+        values = post_event[columns].abs().to_numpy(dtype=float)
+        flat_index = int(np.nanargmax(values))
+        row_index, column_index = np.unravel_index(flat_index, values.shape)
+        metrics["{}_peak_{}".format(group_name, unit)] = float(
+            values[row_index, column_index]
+        )
+        metrics["{}_peak_channel".format(group_name)] = columns[column_index]
+        metrics["{}_peak_time_ms".format(group_name)] = float(
+            (post_event.iloc[row_index]["time_s"] - switching_time_s) * 1e3
+        )
+
+    nominal_phase_peak_kv = float(nominal_voltage_kv) / np.sqrt(3.0) * np.sqrt(2.0)
+    metrics["nominal_phase_peak_kv"] = nominal_phase_peak_kv
+    metrics["core_voltage_peak_pu"] = float(
+        metrics["core_voltage_peak_kv"] / nominal_phase_peak_kv
+    )
+    return metrics
