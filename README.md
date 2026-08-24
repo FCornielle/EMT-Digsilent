@@ -218,7 +218,7 @@ cross-bonding is required before evaluating local joint or SVL duty.
 ### Install
 
 ```powershell
-cd powerfactory-emt-industrial-studies
+cd "C:\Users\VM-PF\Documents\06 - EMT DIgSILENT"
 py -3.9 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
