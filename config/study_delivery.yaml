@@ -1,0 +1,50 @@
+schema_version: 1
+
+# Delivery stages are deliberately evidence based:
+# - planned: method contract only; no executed EMT result is claimed.
+# - offline_ready: portable implementation and tests are complete; engine results are not claimed.
+# - engine_verified: PowerFactory execution evidence and a verified PFD archive are versioned.
+required_studies: ['03', '04', '05', '06', '07', '08']
+
+studies:
+  - id: '03'
+    slug: transformer_energization
+    directory: studies/03_transformer_energization
+    stage: planned
+    result_provenance: not_executed
+    evidence: {}
+
+  - id: '04'
+    slug: capacitor_bank_energization
+    directory: studies/04_capacitor_bank_energization
+    stage: planned
+    result_provenance: not_executed
+    evidence: {}
+
+  - id: '05'
+    slug: transformer_saturation_sensitivity
+    directory: studies/05_transformer_saturation_sensitivity
+    stage: planned
+    result_provenance: not_executed
+    evidence: {}
+
+  - id: '06'
+    slug: circuit_breaker_trv
+    directory: studies/06_circuit_breaker_trv
+    stage: planned
+    result_provenance: not_executed
+    evidence: {}
+
+  - id: '07'
+    slug: faults_variable_clearing
+    directory: studies/07_faults_variable_clearing
+    stage: planned
+    result_provenance: not_executed
+    evidence: {}
+
+  - id: '08'
+    slug: lightning_travelling_waves
+    directory: studies/08_lightning_travelling_waves
+    stage: planned
+    result_provenance: not_executed
+    evidence: {}
