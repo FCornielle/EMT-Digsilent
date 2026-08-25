@@ -1,0 +1,16 @@
+{
+  "campaign": "fault_type_by_three_pole_breaker_clearing_time",
+  "completed_utc": "2026-08-25T00:39:15.588980+00:00",
+  "configuration": "C:\\Users\\VM-PF\\Documents\\06 - EMT Digsilent\\studies\\07_faults_variable_clearing\\configs\\base.yaml",
+  "engine": "DIgSILENT PowerFactory",
+  "execution_status": "executed",
+  "platform": "Windows-10-10.0.19041-SP0",
+  "powerfactory_release": "2024 SP2",
+  "powerfactory_user": "VM-PF",
+  "project": "PFEMT_07_Fault_Clearing_230kV",
+  "python_version": "3.9.0",
+  "scenario_count": 9,
+  "simulation_type": "EMT",
+  "study_case": "EMT - Fault Clearing",
+  "study_id": "faults_variable_clearing_230kv"
+}

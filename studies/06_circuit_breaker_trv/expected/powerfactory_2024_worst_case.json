@@ -1,0 +1,16 @@
+{
+  "average_rrrv_kv_per_us": 0.10959302874859066,
+  "clearing_time_s": 0.055,
+  "fault_duration_ms": 35.0,
+  "fault_id": "three_phase",
+  "fault_label": "Three-phase bolted fault",
+  "fault_time_s": 0.02,
+  "fault_type_code": 0,
+  "interruption_current_peak_ka": 3.821305,
+  "limiting_phase_index": 2.0,
+  "phase_selector": 0,
+  "scenario_id": "three_phase_35ms",
+  "time_to_trv_peak_us": 3548.0000000000027,
+  "trv_peak_kv": 388.83606599999996,
+  "trv_peak_pu": 2.070543381067745
+}

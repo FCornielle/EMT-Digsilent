@@ -1,0 +1,16 @@
+{
+  "campaign": "ideal_breaker_trv_by_commanded_clearing_time",
+  "completed_utc": "2026-08-25T00:35:47.468493+00:00",
+  "configuration": "C:\\Users\\VM-PF\\Documents\\06 - EMT Digsilent\\studies\\06_circuit_breaker_trv\\configs\\base.yaml",
+  "engine": "DIgSILENT PowerFactory",
+  "execution_status": "executed",
+  "platform": "Windows-10-10.0.19041-SP0",
+  "powerfactory_release": "2024 SP2",
+  "powerfactory_user": "VM-PF",
+  "project": "PFEMT_06_Breaker_TRV_230kV",
+  "python_version": "3.9.0",
+  "scenario_count": 3,
+  "simulation_type": "EMT",
+  "study_case": "EMT - Breaker TRV",
+  "study_id": "circuit_breaker_trv_230kv"
+}

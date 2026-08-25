@@ -15,9 +15,15 @@ from pfemt.cable import cable_scenarios
 from pfemt.capacitor import capacitor_scenarios, capacitor_switching_metrics
 from pfemt.config import load_yaml
 from pfemt.diagram import CABLE_GENERATED_LAYER_NAME
+from pfemt.faults import fault_metrics, fault_scenarios, trv_metrics
 from pfemt.io import read_powerfactory_csv
 from pfemt.transformer import transformer_energization_metrics, transformer_scenarios
-from pfemt.workflows import build, run_capacitor_scenario, run_transformer_scenario
+from pfemt.workflows import (
+    build,
+    run_capacitor_scenario,
+    run_fault_scenario,
+    run_transformer_scenario,
+)
 
 pytestmark = pytest.mark.powerfactory
 
@@ -212,6 +218,80 @@ def test_capacitor_switching_model_executes_back_to_back_emt(tmp_path: Path) -> 
         assert len(frame) > 1000
         assert float(metrics["current_peak_ka"]) > 5.0
         assert 5000.0 < float(metrics["dominant_frequency_hz"]) < 8000.0
+    finally:
+        objects.clear()
+        del app
+
+
+@pytest.mark.skipif(
+    os.environ.get("PFEMT_RUN_INTEGRATION") != "1",
+    reason="requires explicit PowerFactory integration opt-in",
+)
+def test_breaker_trv_model_executes_and_measures_contact_voltage(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[2]
+    config = load_yaml(root / "studies/06_circuit_breaker_trv/configs/base.yaml")
+    config["connection"]["mode"] = os.environ.get("PFEMT_INTEGRATION_MODE", "external")
+    app = connect(config)
+    objects = {}
+    try:
+        objects = build(config, app)
+        breaker_path = objects["breaker"].GetFullName()
+        assert build(config, app)["breaker"].GetFullName() == breaker_path
+        scenario = fault_scenarios(config)[1]
+        raw = run_fault_scenario(app, config, objects, scenario, tmp_path / "trv.csv")
+        frame = read_powerfactory_csv(
+            raw, config["analysis"]["column_map"], config["analysis"]["decimal"]
+        )
+        metrics = trv_metrics(frame, scenario, config)
+        assert len(frame) > 1000
+        assert float(metrics["trv_peak_kv"]) > 200.0
+        assert float(metrics["average_rrrv_kv_per_us"]) > 0.0
+    finally:
+        objects.clear()
+        del app
+
+
+@pytest.mark.skipif(
+    os.environ.get("PFEMT_RUN_INTEGRATION") != "1",
+    reason="requires explicit PowerFactory integration opt-in",
+)
+def test_fault_network_executes_slg_and_three_phase_signatures(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[2]
+    config = load_yaml(root / "studies/07_faults_variable_clearing/configs/base.yaml")
+    config["connection"]["mode"] = os.environ.get("PFEMT_INTEGRATION_MODE", "external")
+    app = connect(config)
+    objects = {}
+    try:
+        objects = build(config, app)
+        breaker_path = objects["breaker"].GetFullName()
+        assert build(config, app)["breaker"].GetFullName() == breaker_path
+        scenarios = fault_scenarios(config)
+        slg = scenarios[0]
+        slg_raw = run_fault_scenario(app, config, objects, slg, tmp_path / "slg.csv")
+        slg_frame = read_powerfactory_csv(
+            slg_raw, config["analysis"]["column_map"], config["analysis"]["decimal"]
+        )
+        slg_metrics = fault_metrics(slg_frame, slg, config)
+        active = slg_frame.loc[
+            (slg_frame["time_s"] >= slg.fault_time_s)
+            & (slg_frame["time_s"] <= slg.fault_time_s + 0.02)
+        ]
+        assert active["i_a_ka"].abs().max() > 1.0
+        assert active[["i_b_ka", "i_c_ka"]].abs().to_numpy().max() < 0.01
+        assert float(slg_metrics["recovery_voltage_peak_pu"]) > 0.9
+
+        three_phase = scenarios[6]
+        three_raw = run_fault_scenario(
+            app, config, objects, three_phase, tmp_path / "three_phase.csv"
+        )
+        three_frame = read_powerfactory_csv(
+            three_raw, config["analysis"]["column_map"], config["analysis"]["decimal"]
+        )
+        active_three = three_frame.loc[
+            (three_frame["time_s"] >= three_phase.fault_time_s)
+            & (three_frame["time_s"] <= three_phase.fault_time_s + 0.02)
+        ]
+        assert active_three[["i_a_ka", "i_b_ka", "i_c_ka"]].abs().max().min() > 1.0
     finally:
         objects.clear()
         del app

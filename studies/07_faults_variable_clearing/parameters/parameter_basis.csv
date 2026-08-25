@@ -1,0 +1,9 @@
+parameter,value,unit,basis
+nominal_voltage,230,kV line-line,declared benchmark
+source_short_circuit_power,10000,MVA,declared strong-grid equivalent
+positive_sequence_impedance,0.01+j0.15,pu on 100 MVA,declared benchmark
+zero_sequence_impedance,0.03+j0.45,pu on 100 MVA,declared benchmark
+fault_resistance,0.10,ohm,constant-resistance teaching input
+fault_inception,20,ms,common event time
+clearing_durations,40;80;120,ms,main-to-backup timing examples
+integration_step,10,microsecond,executed EMT baseline

@@ -1,0 +1,10 @@
+scenario_id,fault_id,fault_label,fault_type_code,phase_selector,fault_time_s,clearing_time_s
+single_phase_ground_40ms,single_phase_ground,"Single-phase-to-ground fault, phase A",2,0,0.02,0.06
+single_phase_ground_80ms,single_phase_ground,"Single-phase-to-ground fault, phase A",2,0,0.02,0.1
+single_phase_ground_120ms,single_phase_ground,"Single-phase-to-ground fault, phase A",2,0,0.02,0.14
+phase_to_phase_40ms,phase_to_phase,"Phase-to-phase fault, phases A-B",1,0,0.02,0.06
+phase_to_phase_80ms,phase_to_phase,"Phase-to-phase fault, phases A-B",1,0,0.02,0.1
+phase_to_phase_120ms,phase_to_phase,"Phase-to-phase fault, phases A-B",1,0,0.02,0.14
+three_phase_40ms,three_phase,Three-phase bolted fault,0,0,0.02,0.06
+three_phase_80ms,three_phase,Three-phase bolted fault,0,0,0.02,0.1
+three_phase_120ms,three_phase,Three-phase bolted fault,0,0,0.02,0.14

@@ -1,0 +1,4 @@
+scenario_id,fault_id,fault_label,fault_type_code,phase_selector,fault_time_s,clearing_time_s,fault_duration_ms,interruption_current_peak_ka,trv_peak_kv,trv_peak_pu,time_to_trv_peak_us,average_rrrv_kv_per_us,limiting_phase_index
+three_phase_35ms,three_phase,Three-phase bolted fault,0,0,0.02,0.055,35,3.821305,388.836066,2.070543381,3548,0.1095930287,2
+three_phase_30ms,three_phase,Three-phase bolted fault,0,0,0.02,0.05,30,3.821305,374.481479,1.994105525,6174,0.06065459653,0
+three_phase_40ms,three_phase,Three-phase bolted fault,0,0,0.02,0.06,40,3.821305,363.300805,1.934568686,1522,0.2386996091,1

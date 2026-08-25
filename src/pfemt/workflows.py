@@ -19,6 +19,7 @@ from pfemt.builders.cable_energization import (
     build_cable_energization_model,
 )
 from pfemt.builders.capacitor_energization import build_capacitor_energization_model
+from pfemt.builders.fault_network import build_fault_network_model
 from pfemt.builders.line_energization import build_line_energization_model
 from pfemt.builders.transformer_energization import build_transformer_energization_model
 from pfemt.cable import (
@@ -43,7 +44,15 @@ from pfemt.capacitor_plotting import (
 from pfemt.config import load_yaml, resolve_from_config, validate_study_config
 from pfemt.diagram import export_powerfactory_diagram
 from pfemt.errors import ResultFormatError
-from pfemt.events import configure_switch_event
+from pfemt.events import configure_short_circuit_event, configure_switch_event
+from pfemt.fault_plotting import plot_fault_summary, plot_fault_waveforms, plot_trv_waveforms
+from pfemt.faults import (
+    FaultScenario,
+    export_fault_manifest,
+    fault_metrics,
+    fault_scenarios,
+    trv_metrics,
+)
 from pfemt.io import read_powerfactory_csv, write_normalized_csv
 from pfemt.metrics import (
     compare_sweep_to_baseline,
@@ -96,7 +105,9 @@ def build(config: Mapping[str, Any], app: Optional[Any] = None) -> Dict[str, Any
     validate_study_config(config)
     pf_app = app or connect(config)
     study_id = str(config["study"]["id"])
-    if study_id.startswith("transformer_saturation_sensitivity"):
+    if study_id.startswith(("circuit_breaker_trv", "faults_variable_clearing")):
+        objects = build_fault_network_model(pf_app, config)
+    elif study_id.startswith("transformer_saturation_sensitivity"):
         objects = build_transformer_energization_model(pf_app, config)
     elif study_id.startswith("capacitor_bank_energization"):
         objects = build_capacitor_energization_model(pf_app, config)
@@ -117,7 +128,9 @@ def export_diagram(config: Mapping[str, Any], app: Optional[Any] = None) -> Path
     validate_study_config(config)
     pf_app = app or connect(config)
     study_id = str(config["study"]["id"])
-    if study_id.startswith("transformer_saturation_sensitivity"):
+    if study_id.startswith(("circuit_breaker_trv", "faults_variable_clearing")):
+        objects = build_fault_network_model(pf_app, config)
+    elif study_id.startswith("transformer_saturation_sensitivity"):
         objects = build_transformer_energization_model(pf_app, config)
     elif study_id.startswith("capacitor_bank_energization"):
         objects = build_capacitor_energization_model(pf_app, config)
@@ -402,6 +415,108 @@ def run_capacitor_sweep(config: Mapping[str, Any], app: Optional[Any] = None) ->
             "study_case": config["powerfactory"]["study_case"],
             "scenario_count": len(scenarios),
             "campaign": "isolated_and_back_to_back_by_point_on_wave",
+        },
+    )
+    return output
+
+
+def run_fault_scenario(
+    app: Any,
+    config: Mapping[str, Any],
+    objects: Mapping[str, Any],
+    scenario: FaultScenario,
+    destination: Path,
+) -> Path:
+    """Execute one fault case using either breaker opening or fault removal."""
+    configure_emt(objects["initial_conditions"], objects["simulation"], config)
+    register_channels(app, objects["result"], config["results"]["channels"])
+    set_attribute(objects["source"], "usetp", float(config["network"]["source"]["voltage_pu"]))
+    set_attribute(objects["breaker"], "on_off", 1)
+    fault_data = config["events"]["fault"]
+    configure_short_circuit_event(
+        objects["initial_conditions"],
+        objects["fault_bus"],
+        fault_data["name"],
+        scenario.fault_time_s,
+        scenario.fault_type_code,
+        clear=False,
+        resistance_ohm=float(fault_data.get("resistance_ohm", 0.0)),
+        reactance_ohm=float(fault_data.get("reactance_ohm", 0.0)),
+        phase_selector=scenario.phase_selector,
+    )
+    if str(config["study"]["id"]).startswith("circuit_breaker_trv"):
+        configure_switch_event(
+            objects["initial_conditions"],
+            objects["breaker"],
+            config["events"]["clearing"]["name"],
+            scenario.clearing_time_s,
+            action=0,
+        )
+    else:
+        for stale in list(
+            objects["events"].GetContents(
+                "{}.EvtShc".format(config["events"]["clearing"]["name"])
+            )
+            or []
+        ):
+            stale.Delete()
+        configure_switch_event(
+            objects["initial_conditions"],
+            objects["breaker"],
+            config["events"]["clearing"]["name"],
+            scenario.clearing_time_s,
+            action=0,
+        )
+    run_emt(objects["initial_conditions"], objects["simulation"])
+    return export_csv(app, objects["result"], destination)
+
+
+def run_fault_sweep(config: Mapping[str, Any], app: Optional[Any] = None) -> Path:
+    """Run the Study 06 or Study 07 deterministic EMT campaign."""
+    validate_study_config(config)
+    pf_app = app or connect(config)
+    objects = build_fault_network_model(pf_app, config)
+    output = output_directory(config)
+    scenarios = fault_scenarios(config)
+    export_fault_manifest(scenarios, output / "scenario_manifest.csv")
+    raw = output / "raw"
+    raw.mkdir(parents=True, exist_ok=True)
+    study_number = "06" if str(config["study"]["id"]).startswith("circuit_breaker_trv") else "07"
+    for index, scenario in enumerate(scenarios, start=1):
+        print(
+            "PFEMT Study {}: case {}/{} - {}".format(
+                study_number, index, len(scenarios), scenario.scenario_id
+            ),
+            flush=True,
+        )
+        run_fault_scenario(
+            pf_app,
+            config,
+            objects,
+            scenario,
+            raw / "{}.csv".format(scenario.scenario_id),
+        )
+    set_attribute(objects["breaker"], "on_off", 1)
+    write_run_metadata(
+        config,
+        output / "run_metadata.json",
+        {
+            "engine": "DIgSILENT PowerFactory",
+            "simulation_type": "EMT",
+            "execution_status": "executed",
+            "powerfactory_release": "2024 SP2",
+            "completed_utc": datetime.now(timezone.utc).isoformat(),
+            "python_version": sys.version.split()[0],
+            "platform": platform.platform(),
+            "powerfactory_user": pf_app.GetCurrentUser().loc_name,
+            "project": config["powerfactory"]["project"],
+            "study_case": config["powerfactory"]["study_case"],
+            "scenario_count": len(scenarios),
+            "campaign": (
+                "ideal_breaker_trv_by_commanded_clearing_time"
+                if study_number == "06"
+                else "fault_type_by_three_pole_breaker_clearing_time"
+            ),
         },
     )
     return output
@@ -859,6 +974,57 @@ def analyse_capacitor_sweep(
     summary.to_csv(destination, index=False, float_format="%.10g")
     plot_capacitor_summary(summary, output / "figures" / "capacitor_switching_comparison.png")
     plot_capacitor_design_basis(config, output / "figures" / "capacitor_design_basis.png")
+    write_metrics(summary.iloc[0].to_dict(), output / "metrics" / "worst_case.json")
+    return destination
+
+
+def analyse_fault_sweep(
+    config: Mapping[str, Any], directory: Optional[Path] = None
+) -> Path:
+    """Analyse and rank Study 06 TRV or Study 07 fault-clearing results."""
+    output = directory or output_directory(config)
+    is_trv = str(config["study"]["id"]).startswith("circuit_breaker_trv")
+    rows = []
+    for scenario in fault_scenarios(config):
+        frame = read_powerfactory_csv(
+            output / "raw" / "{}.csv".format(scenario.scenario_id),
+            config["analysis"]["column_map"],
+            config["analysis"].get("decimal", "."),
+        )
+        write_normalized_csv(
+            frame, output / "normalized" / "{}.csv".format(scenario.scenario_id)
+        )
+        metrics = trv_metrics(frame, scenario, config) if is_trv else fault_metrics(
+            frame, scenario, config
+        )
+        row: Dict[str, object] = {
+            "scenario_id": scenario.scenario_id,
+            "fault_id": scenario.fault_id,
+            "fault_label": scenario.fault_label,
+            "fault_type_code": scenario.fault_type_code,
+            "phase_selector": scenario.phase_selector,
+            "fault_time_s": scenario.fault_time_s,
+            "clearing_time_s": scenario.clearing_time_s,
+            **metrics,
+        }
+        rows.append(row)
+        write_metrics(row, output / "metrics" / "{}.json".format(scenario.scenario_id))
+        figure = output / "figures" / "{}_waveforms.png".format(scenario.scenario_id)
+        if is_trv:
+            plot_trv_waveforms(frame, scenario, row, figure)
+        else:
+            plot_fault_waveforms(frame, scenario, row, figure)
+    ranking = "trv_peak_kv" if is_trv else "i2t_ka2s"
+    summary = pd.DataFrame(rows).sort_values(ranking, ascending=False)
+    destination = output / "sweep_summary.csv"
+    summary.to_csv(destination, index=False, float_format="%.10g")
+    plot_fault_summary(
+        summary,
+        output / "figures" / (
+            "breaker_trv_comparison.png" if is_trv else "fault_clearing_comparison.png"
+        ),
+        trv=is_trv,
+    )
     write_metrics(summary.iloc[0].to_dict(), output / "metrics" / "worst_case.json")
     return destination
 

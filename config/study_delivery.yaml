@@ -84,16 +84,44 @@ studies:
   - id: '06'
     slug: circuit_breaker_trv
     directory: studies/06_circuit_breaker_trv
-    stage: planned
-    result_provenance: not_executed
-    evidence: {}
+    stage: engine_verified
+    result_provenance: powerfactory_emt
+    evidence:
+      configuration: [studies/06_circuit_breaker_trv/configs/base.yaml]
+      scenario_generation: [studies/06_circuit_breaker_trv/parameters/scenario_manifest.csv]
+      analytical_checks: [tests/unit/test_faults.py]
+      plotting: [src/pfemt/fault_plotting.py]
+      result_parser_contract: [tests/unit/test_io.py]
+      builder_idempotency_tests: [tests/integration/test_powerfactory_model.py]
+      offline_tests: [tests/unit/test_faults.py]
+      opt_in_engine_tests: [tests/integration/test_powerfactory_model.py]
+      executed_results:
+        - studies/06_circuit_breaker_trv/expected/powerfactory_2024_emt_sweep.csv
+        - studies/06_circuit_breaker_trv/expected/powerfactory_2024_worst_case.json
+      result_metadata: [studies/06_circuit_breaker_trv/expected/run_metadata_powerfactory_2024.json]
+      pfd_archives: [studies/06_circuit_breaker_trv/powerfactory/PFEMT_06_Breaker_TRV_230kV.pfd]
+      pfd_hash_manifests: [studies/06_circuit_breaker_trv/powerfactory/SHA256SUMS]
 
   - id: '07'
     slug: faults_variable_clearing
     directory: studies/07_faults_variable_clearing
-    stage: planned
-    result_provenance: not_executed
-    evidence: {}
+    stage: engine_verified
+    result_provenance: powerfactory_emt
+    evidence:
+      configuration: [studies/07_faults_variable_clearing/configs/base.yaml]
+      scenario_generation: [studies/07_faults_variable_clearing/parameters/scenario_manifest.csv]
+      analytical_checks: [tests/unit/test_faults.py]
+      plotting: [src/pfemt/fault_plotting.py]
+      result_parser_contract: [tests/unit/test_io.py]
+      builder_idempotency_tests: [tests/integration/test_powerfactory_model.py]
+      offline_tests: [tests/unit/test_faults.py]
+      opt_in_engine_tests: [tests/integration/test_powerfactory_model.py]
+      executed_results:
+        - studies/07_faults_variable_clearing/expected/powerfactory_2024_emt_sweep.csv
+        - studies/07_faults_variable_clearing/expected/powerfactory_2024_worst_case.json
+      result_metadata: [studies/07_faults_variable_clearing/expected/run_metadata_powerfactory_2024.json]
+      pfd_archives: [studies/07_faults_variable_clearing/powerfactory/PFEMT_07_Fault_Clearing_230kV.pfd]
+      pfd_hash_manifests: [studies/07_faults_variable_clearing/powerfactory/SHA256SUMS]
 
   - id: '08'
     slug: lightning_travelling_waves

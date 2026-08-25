@@ -1,0 +1,15 @@
+{
+  "clearing_time_s": 0.14,
+  "current_peak_ka": 3.816117,
+  "fault_bus_voltage_min_pu": 0.0,
+  "fault_duration_ms": 120.00000000000001,
+  "fault_id": "three_phase",
+  "fault_label": "Three-phase bolted fault",
+  "fault_time_s": 0.02,
+  "fault_type_code": 0,
+  "first_cycle_rms_max_ka": 2.2626254822724525,
+  "i2t_ka2s": 0.9990257806247886,
+  "phase_selector": 0,
+  "recovery_voltage_peak_pu": 0.9999999541339596,
+  "scenario_id": "three_phase_120ms"
+}

@@ -1,0 +1,103 @@
+study:
+  id: circuit_breaker_trv_230kv
+  title: 230 kV circuit-breaker transient recovery voltage
+  owner: Fernando Cornielle
+  status: engineering_example
+
+connection:
+  mode: external
+  home:
+  username:
+  password:
+  command_line:
+
+powerfactory:
+  project: PFEMT_06_Breaker_TRV_230kV
+  grid: GRID_TRV_230KV
+  study_case: EMT - Breaker TRV
+
+diagram:
+  name: EMT Breaker TRV 230 kV
+
+objects:
+  source: GRID_EQUIVALENT_TRV
+  source_bus: BUS_SOURCE_230
+  breaker: CB_FAULT_CLEARING
+  load_bus: BUS_BREAKER_LOAD_230
+  impedance: LINE_EQUIVALENT_TRV
+  fault_bus: BUS_FAULT_230
+  source_capacitance: C_SOURCE_STRAY
+  load_capacitance: C_LOAD_STRAY
+
+network:
+  frequency_hz: 50.0
+  nominal_voltage_kv: 230.0
+  source:
+    voltage_pu: 1.0
+    short_circuit_mva: 10000.0
+    r_over_x: 0.10
+    x0_over_x1: 1.0
+    r0_over_x0: 0.10
+  impedance:
+    Sn: 100.0
+    r_pu: 0.010
+    x_pu: 0.150
+    r0_pu: 0.010
+    x0_pu: 0.150
+  source_capacitance_mvar: 0.20
+  load_capacitance_mvar: 0.10
+
+sweep:
+  fault_time_s: 0.020
+  clearing_times_s: [0.050, 0.055, 0.060]
+  fault_types:
+    - id: three_phase
+      label: Three-phase bolted fault
+      code: 0
+      phase_selector: 0
+
+simulation:
+  mode: instantaneous_emt
+  mode_code: ins
+  start_s: -0.005
+  stop_s: 0.085
+  step_s: 0.000005
+  output_step_s: 0.000005
+
+events:
+  fault:
+    name: APPLY_FAULT
+    resistance_ohm: 0.01
+    reactance_ohm: 0.0
+  clearing:
+    name: OPEN_CB_FAULT
+
+results:
+  channels:
+    - {object: CB_FAULT_CLEARING.ElmCoup, variable: "m:I:bus1:A"}
+    - {object: CB_FAULT_CLEARING.ElmCoup, variable: "m:I:bus1:B"}
+    - {object: CB_FAULT_CLEARING.ElmCoup, variable: "m:I:bus1:C"}
+    - {object: BUS_SOURCE_230.ElmTerm, variable: "m:U:A"}
+    - {object: BUS_SOURCE_230.ElmTerm, variable: "m:U:B"}
+    - {object: BUS_SOURCE_230.ElmTerm, variable: "m:U:C"}
+    - {object: BUS_BREAKER_LOAD_230.ElmTerm, variable: "m:U:A"}
+    - {object: BUS_BREAKER_LOAD_230.ElmTerm, variable: "m:U:B"}
+    - {object: BUS_BREAKER_LOAD_230.ElmTerm, variable: "m:U:C"}
+
+analysis:
+  decimal: "."
+  column_map:
+    time_s: time
+    i_a_ka: CB_FAULT_CLEARING.ElmCoup | Phase Current A
+    i_b_ka: CB_FAULT_CLEARING.ElmCoup | Phase Current B
+    i_c_ka: CB_FAULT_CLEARING.ElmCoup | Phase Current C
+    v_source_a_kv: BUS_SOURCE_230.ElmTerm | Phase Voltage A
+    v_source_b_kv: BUS_SOURCE_230.ElmTerm | Phase Voltage B
+    v_source_c_kv: BUS_SOURCE_230.ElmTerm | Phase Voltage C
+    v_load_a_kv: BUS_BREAKER_LOAD_230.ElmTerm | Phase Voltage A
+    v_load_b_kv: BUS_BREAKER_LOAD_230.ElmTerm | Phase Voltage B
+    v_load_c_kv: BUS_BREAKER_LOAD_230.ElmTerm | Phase Voltage C
+
+outputs:
+  directory: ../outputs
+  project_archive: ../powerfactory/PFEMT_06_Breaker_TRV_230kV.pfd

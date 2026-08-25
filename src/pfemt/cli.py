@@ -14,12 +14,14 @@ from pfemt.cable import cable_scenarios, export_cable_scenario_manifest
 from pfemt.capacitor import capacitor_scenarios, export_capacitor_manifest
 from pfemt.config import load_yaml, validate_study_config
 from pfemt.errors import PFEMTError
+from pfemt.faults import export_fault_manifest, fault_scenarios
 from pfemt.saturation import export_saturation_manifest, saturation_scenarios
 from pfemt.scenarios import export_manifest, point_on_wave_scenarios
 from pfemt.transformer import export_transformer_manifest, transformer_scenarios
 from pfemt.workflows import (
     analyse_cable_sweep,
     analyse_capacitor_sweep,
+    analyse_fault_sweep,
     analyse_saturation_sweep,
     analyse_sweep,
     analyse_transformer_sweep,
@@ -29,6 +31,7 @@ from pfemt.workflows import (
     output_directory,
     run_cable_sweep,
     run_capacitor_sweep,
+    run_fault_sweep,
     run_point_on_wave_sweep,
     run_saturation_sweep,
     run_timestep_sensitivity,
@@ -97,6 +100,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             study_id = str(config["study"]["id"])
             if study_id.startswith("transformer_saturation_sensitivity"):
                 print(run_saturation_sweep(config))
+            elif study_id.startswith(("circuit_breaker_trv", "faults_variable_clearing")):
+                print(run_fault_sweep(config))
             elif study_id.startswith("capacitor_bank_energization"):
                 print(run_capacitor_sweep(config))
             elif study_id.startswith("transformer_energization"):
@@ -109,6 +114,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             study_id = str(config["study"]["id"])
             if study_id.startswith("transformer_saturation_sensitivity"):
                 print(analyse_saturation_sweep(config))
+            elif study_id.startswith(("circuit_breaker_trv", "faults_variable_clearing")):
+                print(analyse_fault_sweep(config))
             elif study_id.startswith("capacitor_bank_energization"):
                 print(analyse_capacitor_sweep(config))
             elif study_id.startswith("transformer_energization"):
@@ -126,6 +133,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             study_id = str(config["study"]["id"])
             if study_id.startswith("transformer_saturation_sensitivity"):
                 print(export_saturation_manifest(saturation_scenarios(config), destination))
+            elif study_id.startswith(("circuit_breaker_trv", "faults_variable_clearing")):
+                print(export_fault_manifest(fault_scenarios(config), destination))
             elif study_id.startswith("capacitor_bank_energization"):
                 print(export_capacitor_manifest(capacitor_scenarios(config), destination))
             elif study_id.startswith("transformer_energization"):

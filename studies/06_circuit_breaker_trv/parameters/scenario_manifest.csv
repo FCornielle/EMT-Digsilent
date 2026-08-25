@@ -1,0 +1,4 @@
+scenario_id,fault_id,fault_label,fault_type_code,phase_selector,fault_time_s,clearing_time_s
+three_phase_30ms,three_phase,Three-phase bolted fault,0,0,0.02,0.05
+three_phase_35ms,three_phase,Three-phase bolted fault,0,0,0.02,0.055
+three_phase_40ms,three_phase,Three-phase bolted fault,0,0,0.02,0.06

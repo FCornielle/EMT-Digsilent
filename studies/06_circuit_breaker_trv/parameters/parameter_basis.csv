@@ -1,0 +1,8 @@
+parameter,value,unit,basis
+nominal_voltage,230,kV line-line,declared benchmark
+source_short_circuit_power,10000,MVA,declared strong-grid equivalent
+series_impedance,0.01+j0.15,pu on 100 MVA,declared benchmark
+source_shunt,0.20,Mvar at 230 kV,illustrative stray capacitance
+load_shunt,0.10,Mvar at 230 kV,illustrative stray capacitance
+fault_resistance,0.01,ohm,declared bolted-fault approximation
+integration_step,5,microsecond,executed EMT baseline
