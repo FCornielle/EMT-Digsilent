@@ -42,16 +42,44 @@ studies:
   - id: '04'
     slug: capacitor_bank_energization
     directory: studies/04_capacitor_bank_energization
-    stage: planned
-    result_provenance: not_executed
-    evidence: {}
+    stage: engine_verified
+    result_provenance: powerfactory_emt
+    evidence:
+      configuration: [studies/04_capacitor_bank_energization/configs/base.yaml]
+      scenario_generation: [studies/04_capacitor_bank_energization/parameters/scenario_manifest.csv]
+      analytical_checks: [tests/unit/test_capacitor.py]
+      plotting: [src/pfemt/capacitor_plotting.py]
+      result_parser_contract: [tests/unit/test_io.py]
+      builder_idempotency_tests: [tests/integration/test_powerfactory_model.py]
+      offline_tests: [tests/unit/test_capacitor.py]
+      opt_in_engine_tests: [tests/integration/test_powerfactory_model.py]
+      executed_results:
+        - studies/04_capacitor_bank_energization/expected/powerfactory_2024_emt_sweep.csv
+        - studies/04_capacitor_bank_energization/expected/powerfactory_2024_worst_case.json
+      result_metadata: [studies/04_capacitor_bank_energization/expected/run_metadata_powerfactory_2024.json]
+      pfd_archives: [studies/04_capacitor_bank_energization/powerfactory/PFEMT_04_Capacitor_Switching_230kV.pfd]
+      pfd_hash_manifests: [studies/04_capacitor_bank_energization/powerfactory/SHA256SUMS]
 
   - id: '05'
     slug: transformer_saturation_sensitivity
     directory: studies/05_transformer_saturation_sensitivity
-    stage: planned
-    result_provenance: not_executed
-    evidence: {}
+    stage: engine_verified
+    result_provenance: powerfactory_emt
+    evidence:
+      configuration: [studies/05_transformer_saturation_sensitivity/configs/base.yaml]
+      scenario_generation: [studies/05_transformer_saturation_sensitivity/parameters/scenario_manifest.csv]
+      analytical_checks: [tests/unit/test_saturation.py]
+      plotting: [src/pfemt/saturation_plotting.py]
+      result_parser_contract: [tests/unit/test_io.py]
+      builder_idempotency_tests: [tests/integration/test_powerfactory_model.py]
+      offline_tests: [tests/unit/test_saturation.py]
+      opt_in_engine_tests: [tests/integration/test_powerfactory_model.py]
+      executed_results:
+        - studies/05_transformer_saturation_sensitivity/expected/powerfactory_2024_emt_sweep.csv
+        - studies/05_transformer_saturation_sensitivity/expected/powerfactory_2024_worst_case.json
+      result_metadata: [studies/05_transformer_saturation_sensitivity/expected/run_metadata_powerfactory_2024.json]
+      pfd_archives: [studies/05_transformer_saturation_sensitivity/powerfactory/PFEMT_05_Transformer_Sensitivity.pfd]
+      pfd_hash_manifests: [studies/05_transformer_saturation_sensitivity/powerfactory/SHA256SUMS]
 
   - id: '06'
     slug: circuit_breaker_trv

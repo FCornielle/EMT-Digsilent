@@ -113,7 +113,7 @@ def build_transformer_energization_model(
     diagram = ensure_study_diagram(
         app,
         grid_model,
-        "EMT Transformer Energization 230-34.5 kV",
+        str(pf_config.get("diagram", "EMT Transformer Energization 230-34.5 kV")),
         [
             names["source"],
             names["source_bus"],

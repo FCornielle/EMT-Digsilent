@@ -12,11 +12,12 @@ import pytest
 from pfemt.application import connect
 from pfemt.builders.cable_energization import apply_cable_bonding_scenario
 from pfemt.cable import cable_scenarios
+from pfemt.capacitor import capacitor_scenarios, capacitor_switching_metrics
 from pfemt.config import load_yaml
 from pfemt.diagram import CABLE_GENERATED_LAYER_NAME
 from pfemt.io import read_powerfactory_csv
 from pfemt.transformer import transformer_energization_metrics, transformer_scenarios
-from pfemt.workflows import build, run_transformer_scenario
+from pfemt.workflows import build, run_capacitor_scenario, run_transformer_scenario
 
 pytestmark = pytest.mark.powerfactory
 
@@ -167,6 +168,50 @@ def test_transformer_inrush_model_executes_nonlinear_emt(tmp_path: Path) -> None
         assert len(frame) > 1000
         assert float(metrics["current_peak_pu"]) > 2.0
         assert 0.5 < float(metrics["lv_voltage_peak_pu"]) < 1.5
+    finally:
+        objects.clear()
+        del app
+
+
+@pytest.mark.skipif(
+    os.environ.get("PFEMT_RUN_INTEGRATION") != "1",
+    reason="requires explicit PowerFactory integration opt-in",
+)
+def test_capacitor_switching_model_executes_back_to_back_emt(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[2]
+    config = load_yaml(root / "studies/04_capacitor_bank_energization/configs/base.yaml")
+    config["connection"]["mode"] = os.environ.get("PFEMT_INTEGRATION_MODE", "external")
+    app = connect(config)
+    objects = {}
+    try:
+        objects = build(config, app)
+        first_bank_path = objects["bank_a"].GetFullName()
+        assert build(config, app)["bank_a"].GetFullName() == first_bank_path
+        assert objects["bank_a"].shtype == 2
+        assert objects["bank_a"].cgnd == 0
+        assert objects["bank_a"].qcapn == pytest.approx(100.0)
+        assert objects["reactor_a"].x_pu > 0.0
+        scenario = next(
+            item
+            for item in capacitor_scenarios(config)
+            if item.scenario_id == "back_to_back_pow_090deg"
+        )
+        raw = run_capacitor_scenario(
+            app,
+            config,
+            objects,
+            scenario,
+            tmp_path / "capacitor_switching.csv",
+        )
+        frame = read_powerfactory_csv(
+            raw,
+            config["analysis"]["column_map"],
+            config["analysis"]["decimal"],
+        )
+        metrics = capacitor_switching_metrics(frame, scenario, config)
+        assert len(frame) > 1000
+        assert float(metrics["current_peak_ka"]) > 5.0
+        assert 5000.0 < float(metrics["dominant_frequency_hz"]) < 8000.0
     finally:
         objects.clear()
         del app

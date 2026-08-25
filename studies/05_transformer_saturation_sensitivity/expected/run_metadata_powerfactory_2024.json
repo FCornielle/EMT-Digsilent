@@ -1,0 +1,16 @@
+{
+  "campaign": "one_at_a_time_magnetic_sensitivity",
+  "completed_utc": "2026-08-25T00:21:17.521273+00:00",
+  "configuration": "C:\\Users\\VM-PF\\Documents\\06 - EMT Digsilent\\studies\\05_transformer_saturation_sensitivity\\configs\\base.yaml",
+  "engine": "DIgSILENT PowerFactory",
+  "execution_status": "executed",
+  "platform": "Windows-10-10.0.19041-SP0",
+  "powerfactory_release": "2024 SP2",
+  "powerfactory_user": "VM-PF",
+  "project": "PFEMT_05_Transformer_Sensitivity",
+  "python_version": "3.9.0",
+  "scenario_count": 9,
+  "simulation_type": "EMT",
+  "study_case": "EMT - Saturation Sensitivity",
+  "study_id": "transformer_saturation_sensitivity"
+}

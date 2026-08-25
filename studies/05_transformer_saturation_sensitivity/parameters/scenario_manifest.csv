@@ -1,0 +1,10 @@
+scenario_id,label,knee_flux_pu,air_core_reactance_pu,saturation_exponent,residual_scale,switching_angle_deg,switching_time_s,residual_flux_a_pu,residual_flux_b_pu,residual_flux_c_pu
+baseline,Baseline,1.1,0.2,13,1.0,90.0,0.025,-0.8,0.4,0.4
+knee_low,Knee flux -4.5%,1.05,0.2,13,1.0,90.0,0.025,-0.8,0.4,0.4
+knee_high,Knee flux +4.5%,1.15,0.2,13,1.0,90.0,0.025,-0.8,0.4,0.4
+air_core_low,Air-core reactance -25%,1.1,0.15,13,1.0,90.0,0.025,-0.8,0.4,0.4
+air_core_high,Air-core reactance +25%,1.1,0.25,13,1.0,90.0,0.025,-0.8,0.4,0.4
+exponent_low,Polynomial exponent 9,1.1,0.2,9,1.0,90.0,0.025,-0.8,0.4,0.4
+exponent_high,Polynomial exponent 15,1.1,0.2,15,1.0,90.0,0.025,-0.8,0.4,0.4
+residual_low,Residual flux -25%,1.1,0.2,13,0.75,90.0,0.025,-0.6000000000000001,0.30000000000000004,0.30000000000000004
+residual_high,Residual flux +12.5%,1.1,0.2,13,1.125,90.0,0.025,-0.9,0.45,0.45

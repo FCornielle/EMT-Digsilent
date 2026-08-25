@@ -1,0 +1,114 @@
+study:
+  id: transformer_saturation_sensitivity
+  title: Transformer saturation and residual-flux sensitivity
+  owner: Fernando Cornielle
+  status: engineering_example
+
+connection:
+  mode: external
+  home:
+  username:
+  password:
+  command_line:
+
+powerfactory:
+  project: PFEMT_05_Transformer_Sensitivity
+  grid: GRID_TRANSFORMER_SENSITIVITY
+  study_case: EMT - Saturation Sensitivity
+  diagram: EMT Transformer Saturation Sensitivity
+
+objects:
+  source: GRID_EQUIVALENT_TR_SENS
+  source_bus: BUS_SOURCE_230_SENS
+  breaker: CB_TRANSFORMER_SENS
+  transformer_hv_bus: BUS_TRANSFORMER_HV_SENS
+  transformer: TR_SENS_230_34P5KV_100MVA
+  transformer_lv_bus: BUS_TRANSFORMER_LV_SENS
+
+network:
+  frequency_hz: 50.0
+  nominal_voltage_kv: 230.0
+  source:
+    voltage_pu: 1.0
+    short_circuit_mva: 10000.0
+    r_over_x: 0.10
+    x0_over_x1: 1.0
+    r0_over_x0: 0.10
+  transformer:
+    type_name: TYP_TR_SENS_100MVA
+    rated_power_mva: 100.0
+    hv_voltage_kv: 230.0
+    lv_voltage_kv: 34.5
+    short_circuit_voltage_pct: 12.5
+    copper_losses_kw: 300.0
+    no_load_current_pct: 0.60
+    no_load_losses_kw: 80.0
+    vector_group_hv: YN
+    vector_group_lv: D
+    saturation:
+      model_basis: polynomial_sensitivity_equivalent
+      model_type: polynomial
+      model_type_code: 2
+      core_limb_model: 3
+      hysteresis_model: 0
+      fit_model: 0
+      knee_current_pu: 0.006
+      knee_flux_pu: 1.10
+      air_core_reactance_pu: 0.20
+      saturation_exponent: 13
+
+sweep:
+  base_switching_time_s: 0.020
+  switching_angle_deg: 90.0
+  baseline_residual_flux_pu: [-0.8, 0.4, 0.4]
+  variants:
+    - {id: baseline, label: Baseline, knee_flux_pu: 1.10, air_core_reactance_pu: 0.20, saturation_exponent: 13, residual_scale: 1.00}
+    - {id: knee_low, label: Knee flux -4.5%, knee_flux_pu: 1.05, air_core_reactance_pu: 0.20, saturation_exponent: 13, residual_scale: 1.00}
+    - {id: knee_high, label: Knee flux +4.5%, knee_flux_pu: 1.15, air_core_reactance_pu: 0.20, saturation_exponent: 13, residual_scale: 1.00}
+    - {id: air_core_low, label: Air-core reactance -25%, knee_flux_pu: 1.10, air_core_reactance_pu: 0.15, saturation_exponent: 13, residual_scale: 1.00}
+    - {id: air_core_high, label: Air-core reactance +25%, knee_flux_pu: 1.10, air_core_reactance_pu: 0.25, saturation_exponent: 13, residual_scale: 1.00}
+    - {id: exponent_low, label: Polynomial exponent 9, knee_flux_pu: 1.10, air_core_reactance_pu: 0.20, saturation_exponent: 9, residual_scale: 1.00}
+    - {id: exponent_high, label: Polynomial exponent 15, knee_flux_pu: 1.10, air_core_reactance_pu: 0.20, saturation_exponent: 15, residual_scale: 1.00}
+    - {id: residual_low, label: Residual flux -25%, knee_flux_pu: 1.10, air_core_reactance_pu: 0.20, saturation_exponent: 13, residual_scale: 0.75}
+    - {id: residual_high, label: Residual flux +12.5%, knee_flux_pu: 1.10, air_core_reactance_pu: 0.20, saturation_exponent: 13, residual_scale: 1.125}
+
+simulation:
+  mode: instantaneous_emt
+  mode_code: ins
+  start_s: -0.020
+  stop_s: 0.300
+  step_s: 0.000005
+  output_step_s: 0.000005
+
+events:
+  closing: {name: CLOSE_CB_TRANSFORMER_SENS, action: 1}
+
+results:
+  channels:
+    - {object: TR_SENS_230_34P5KV_100MVA.ElmTr2, variable: 'm:I:bushv:A'}
+    - {object: TR_SENS_230_34P5KV_100MVA.ElmTr2, variable: 'm:I:bushv:B'}
+    - {object: TR_SENS_230_34P5KV_100MVA.ElmTr2, variable: 'm:I:bushv:C'}
+    - {object: BUS_TRANSFORMER_HV_SENS.ElmTerm, variable: 'm:U:A'}
+    - {object: BUS_TRANSFORMER_HV_SENS.ElmTerm, variable: 'm:U:B'}
+    - {object: BUS_TRANSFORMER_HV_SENS.ElmTerm, variable: 'm:U:C'}
+    - {object: BUS_TRANSFORMER_LV_SENS.ElmTerm, variable: 'm:U:A'}
+    - {object: BUS_TRANSFORMER_LV_SENS.ElmTerm, variable: 'm:U:B'}
+    - {object: BUS_TRANSFORMER_LV_SENS.ElmTerm, variable: 'm:U:C'}
+
+analysis:
+  decimal: "."
+  column_map:
+    time_s: time
+    i_hv_a_ka: TR_SENS_230_34P5KV_100MVA.ElmTr2 | Phase Current A
+    i_hv_b_ka: TR_SENS_230_34P5KV_100MVA.ElmTr2 | Phase Current B
+    i_hv_c_ka: TR_SENS_230_34P5KV_100MVA.ElmTr2 | Phase Current C
+    v_hv_a_kv: BUS_TRANSFORMER_HV_SENS.ElmTerm | Phase Voltage A
+    v_hv_b_kv: BUS_TRANSFORMER_HV_SENS.ElmTerm | Phase Voltage B
+    v_hv_c_kv: BUS_TRANSFORMER_HV_SENS.ElmTerm | Phase Voltage C
+    v_lv_a_kv: BUS_TRANSFORMER_LV_SENS.ElmTerm | Phase Voltage A
+    v_lv_b_kv: BUS_TRANSFORMER_LV_SENS.ElmTerm | Phase Voltage B
+    v_lv_c_kv: BUS_TRANSFORMER_LV_SENS.ElmTerm | Phase Voltage C
+
+outputs:
+  directory: ../outputs
+  project_archive: ../powerfactory/PFEMT_05_Transformer_Sensitivity.pfd

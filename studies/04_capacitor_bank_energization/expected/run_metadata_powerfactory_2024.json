@@ -1,0 +1,16 @@
+{
+  "campaign": "isolated_and_back_to_back_by_point_on_wave",
+  "completed_utc": "2026-08-25T00:13:57.293547+00:00",
+  "configuration": "C:\\Users\\VM-PF\\Documents\\06 - EMT Digsilent\\studies\\04_capacitor_bank_energization\\configs\\base.yaml",
+  "engine": "DIgSILENT PowerFactory",
+  "execution_status": "executed",
+  "platform": "Windows-10-10.0.19041-SP0",
+  "powerfactory_release": "2024 SP2",
+  "powerfactory_user": "VM-PF",
+  "project": "PFEMT_04_Capacitor_Switching_230kV",
+  "python_version": "3.9.0",
+  "scenario_count": 12,
+  "simulation_type": "EMT",
+  "study_case": "EMT - Capacitor Switching",
+  "study_id": "capacitor_bank_energization_230kv"
+}

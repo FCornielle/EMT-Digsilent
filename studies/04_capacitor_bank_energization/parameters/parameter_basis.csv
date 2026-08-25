@@ -1,0 +1,8 @@
+parameter,value,unit,basis
+nominal_voltage,230,kV line-line,declared benchmark
+source_short_circuit_power,10000,MVA,declared strong-grid equivalent
+bank_rating_per_branch,100,Mvar,declared benchmark
+phase_capacitance,6.0172,uF,derived from Q and voltage
+series_reactor,0.10,mH,declared illustrative input
+series_resistance,0.020,ohm,declared illustrative input
+integration_step,2,us,baseline EMT setting

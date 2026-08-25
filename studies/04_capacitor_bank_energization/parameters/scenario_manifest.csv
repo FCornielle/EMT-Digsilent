@@ -1,0 +1,13 @@
+scenario_id,topology_id,topology_label,existing_bank_connected,switching_angle_deg,switching_time_s
+isolated_pow_000deg,isolated,Isolated-bank energization,False,0.0,0.01
+isolated_pow_030deg,isolated,Isolated-bank energization,False,30.0,0.011666666666666667
+isolated_pow_060deg,isolated,Isolated-bank energization,False,60.0,0.013333333333333334
+isolated_pow_090deg,isolated,Isolated-bank energization,False,90.0,0.015
+isolated_pow_120deg,isolated,Isolated-bank energization,False,120.0,0.016666666666666666
+isolated_pow_150deg,isolated,Isolated-bank energization,False,150.0,0.018333333333333333
+back_to_back_pow_000deg,back_to_back,Back-to-back energization,True,0.0,0.01
+back_to_back_pow_030deg,back_to_back,Back-to-back energization,True,30.0,0.011666666666666667
+back_to_back_pow_060deg,back_to_back,Back-to-back energization,True,60.0,0.013333333333333334
+back_to_back_pow_090deg,back_to_back,Back-to-back energization,True,90.0,0.015
+back_to_back_pow_120deg,back_to_back,Back-to-back energization,True,120.0,0.016666666666666666
+back_to_back_pow_150deg,back_to_back,Back-to-back energization,True,150.0,0.018333333333333333

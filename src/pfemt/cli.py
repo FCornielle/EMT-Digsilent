@@ -11,12 +11,16 @@ from typing import Optional, Sequence
 
 from pfemt.application import installation_report
 from pfemt.cable import cable_scenarios, export_cable_scenario_manifest
+from pfemt.capacitor import capacitor_scenarios, export_capacitor_manifest
 from pfemt.config import load_yaml, validate_study_config
 from pfemt.errors import PFEMTError
+from pfemt.saturation import export_saturation_manifest, saturation_scenarios
 from pfemt.scenarios import export_manifest, point_on_wave_scenarios
 from pfemt.transformer import export_transformer_manifest, transformer_scenarios
 from pfemt.workflows import (
     analyse_cable_sweep,
+    analyse_capacitor_sweep,
+    analyse_saturation_sweep,
     analyse_sweep,
     analyse_transformer_sweep,
     archive_project,
@@ -24,7 +28,9 @@ from pfemt.workflows import (
     export_diagram,
     output_directory,
     run_cable_sweep,
+    run_capacitor_sweep,
     run_point_on_wave_sweep,
+    run_saturation_sweep,
     run_timestep_sensitivity,
     run_transformer_sweep,
 )
@@ -89,7 +95,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print("PowerFactory model ready: {}".format(objects["project"].loc_name))
         elif arguments.command == "sweep":
             study_id = str(config["study"]["id"])
-            if study_id.startswith("transformer_energization"):
+            if study_id.startswith("transformer_saturation_sensitivity"):
+                print(run_saturation_sweep(config))
+            elif study_id.startswith("capacitor_bank_energization"):
+                print(run_capacitor_sweep(config))
+            elif study_id.startswith("transformer_energization"):
                 print(run_transformer_sweep(config))
             elif "cable" in config["network"]:
                 print(run_cable_sweep(config))
@@ -97,7 +107,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 print(run_point_on_wave_sweep(config))
         elif arguments.command == "analyse":
             study_id = str(config["study"]["id"])
-            if study_id.startswith("transformer_energization"):
+            if study_id.startswith("transformer_saturation_sensitivity"):
+                print(analyse_saturation_sweep(config))
+            elif study_id.startswith("capacitor_bank_energization"):
+                print(analyse_capacitor_sweep(config))
+            elif study_id.startswith("transformer_energization"):
                 print(analyse_transformer_sweep(config))
             elif "cable" in config["network"]:
                 print(analyse_cable_sweep(config))
@@ -110,7 +124,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         elif arguments.command == "manifest":
             destination = output_directory(config) / "scenario_manifest.csv"
             study_id = str(config["study"]["id"])
-            if study_id.startswith("transformer_energization"):
+            if study_id.startswith("transformer_saturation_sensitivity"):
+                print(export_saturation_manifest(saturation_scenarios(config), destination))
+            elif study_id.startswith("capacitor_bank_energization"):
+                print(export_capacitor_manifest(capacitor_scenarios(config), destination))
+            elif study_id.startswith("transformer_energization"):
                 print(export_transformer_manifest(transformer_scenarios(config), destination))
             elif "cable" in config["network"]:
                 print(export_cable_scenario_manifest(cable_scenarios(config), destination))

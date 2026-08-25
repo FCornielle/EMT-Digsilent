@@ -1,0 +1,111 @@
+study:
+  id: capacitor_bank_energization_230kv
+  title: 230 kV isolated and back-to-back capacitor-bank energization
+  owner: Fernando Cornielle
+  status: engineering_example
+
+connection:
+  mode: external
+  home:
+  username:
+  password:
+  command_line:
+
+powerfactory:
+  project: PFEMT_04_Capacitor_Switching_230kV
+  grid: GRID_CAPACITOR_230KV
+  study_case: EMT - Capacitor Switching
+
+objects:
+  source: GRID_EQUIVALENT_CAP
+  main_bus: BUS_MAIN_230
+  breaker_a: CB_BANK_A
+  feeder_bus_a: BUS_FEEDER_A_230
+  reactor_a: REACTOR_BANK_A
+  bank_bus_a: BUS_BANK_A_230
+  bank_a: CAP_BANK_A_100MVAR
+  breaker_b: CB_BANK_B
+  feeder_bus_b: BUS_FEEDER_B_230
+  reactor_b: REACTOR_BANK_B
+  bank_bus_b: BUS_BANK_B_230
+  bank_b: CAP_BANK_B_100MVAR
+
+network:
+  frequency_hz: 50.0
+  nominal_voltage_kv: 230.0
+  source:
+    voltage_pu: 1.0
+    short_circuit_mva: 10000.0
+    r_over_x: 0.10
+    x0_over_x1: 1.0
+    r0_over_x0: 0.10
+  bank:
+    reactive_power_mvar: 100.0
+    number_of_steps: 1
+    connection: grounded_wye
+  reactor:
+    inductance_mh: 0.10
+    resistance_ohm: 0.020
+
+sweep:
+  base_switching_time_s: 0.010
+  angles_deg: [0, 30, 60, 90, 120, 150]
+  topologies:
+    - id: isolated
+      label: Isolated-bank energization
+      existing_bank_connected: false
+    - id: back_to_back
+      label: Back-to-back energization
+      existing_bank_connected: true
+
+simulation:
+  mode: instantaneous_emt
+  mode_code: ins
+  start_s: -0.005
+  stop_s: 0.100
+  step_s: 0.000002
+  output_step_s: 0.000002
+
+events:
+  closing:
+    name: CLOSE_CB_BANK_A
+    action: 1
+
+results:
+  channels:
+    - object: CAP_BANK_A_100MVAR.ElmShnt
+      variable: m:I:bus1:A
+    - object: CAP_BANK_A_100MVAR.ElmShnt
+      variable: m:I:bus1:B
+    - object: CAP_BANK_A_100MVAR.ElmShnt
+      variable: m:I:bus1:C
+    - object: BUS_MAIN_230.ElmTerm
+      variable: m:U:A
+    - object: BUS_MAIN_230.ElmTerm
+      variable: m:U:B
+    - object: BUS_MAIN_230.ElmTerm
+      variable: m:U:C
+    - object: BUS_BANK_A_230.ElmTerm
+      variable: m:U:A
+    - object: BUS_BANK_A_230.ElmTerm
+      variable: m:U:B
+    - object: BUS_BANK_A_230.ElmTerm
+      variable: m:U:C
+
+analysis:
+  decimal: "."
+  column_map:
+    time_s: time
+    i_bank_a_ka: CAP_BANK_A_100MVAR.ElmShnt | Phase Current A
+    i_bank_b_ka: CAP_BANK_A_100MVAR.ElmShnt | Phase Current B
+    i_bank_c_ka: CAP_BANK_A_100MVAR.ElmShnt | Phase Current C
+    v_main_a_kv: BUS_MAIN_230.ElmTerm | Phase Voltage A
+    v_main_b_kv: BUS_MAIN_230.ElmTerm | Phase Voltage B
+    v_main_c_kv: BUS_MAIN_230.ElmTerm | Phase Voltage C
+    v_bank_a_kv: BUS_BANK_A_230.ElmTerm | Phase Voltage A
+    v_bank_b_kv: BUS_BANK_A_230.ElmTerm | Phase Voltage B
+    v_bank_c_kv: BUS_BANK_A_230.ElmTerm | Phase Voltage C
+
+outputs:
+  directory: ../outputs
+  project_archive: ../powerfactory/PFEMT_04_Capacitor_Switching_230kV.pfd

@@ -1,0 +1,21 @@
+{
+  "back_to_back_frequency_hz": 6488.180210799198,
+  "bank_rated_current_ka": 0.25102185616940254,
+  "bank_voltage_peak_pu": 1.7861329513089264,
+  "current_peak_ka": 23.115647,
+  "current_peak_pu_rated": 92.0861926238023,
+  "dominant_frequency_hz": 6498.700259952784,
+  "existing_bank_connected": true,
+  "isolated_frequency_hz": 498.52189568878,
+  "main_bus_voltage_peak_pu": 1.3520162848186612,
+  "nominal_phase_peak_kv": 187.794213613377,
+  "peak_didt_ka_per_ms": 1258.1730000009245,
+  "phase_capacitance_uf": 6.017200116895854,
+  "reactor_inductance_mh": 0.1,
+  "scenario_id": "back_to_back_pow_090deg",
+  "source_inductance_mh": 16.838592979122527,
+  "switching_angle_deg": 90.0,
+  "switching_time_s": 0.015,
+  "topology_id": "back_to_back",
+  "topology_label": "Back-to-back energization"
+}

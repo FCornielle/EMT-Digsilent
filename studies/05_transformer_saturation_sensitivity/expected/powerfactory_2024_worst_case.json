@@ -1,0 +1,23 @@
+{
+  "air_core_reactance_pu": 0.15,
+  "current_peak_ka": 2.105575,
+  "current_peak_phase": "i_hv_a_ka",
+  "current_peak_pu": 8.388014622037728,
+  "current_peak_time_ms": 9.131,
+  "electrical_period_ms": 20.0,
+  "flux_proxy_peak_phase": "flux_a_pu",
+  "flux_proxy_peak_pu": 2.6840584348535126,
+  "flux_proxy_peak_time_ms": 9.861000000000002,
+  "hv_base_impedance_ohm": 529.0,
+  "knee_flux_pu": 1.1,
+  "label": "Air-core reactance -25%",
+  "leakage_impedance_ohm": 66.125,
+  "lv_voltage_peak_pu": 1.0680006737565424,
+  "nominal_hv_phase_peak_kv": 187.794213613377,
+  "rated_hv_current_ka": 0.25102185616940254,
+  "rated_lv_current_ka": 1.67347904112935,
+  "residual_scale": 1.0,
+  "saturation_exponent": 13,
+  "scenario_id": "air_core_low",
+  "second_harmonic_ratio": 0.1270297582639918
+}
