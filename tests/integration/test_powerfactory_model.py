@@ -14,7 +14,9 @@ from pfemt.builders.cable_energization import apply_cable_bonding_scenario
 from pfemt.cable import cable_scenarios
 from pfemt.config import load_yaml
 from pfemt.diagram import CABLE_GENERATED_LAYER_NAME
-from pfemt.workflows import build
+from pfemt.io import read_powerfactory_csv
+from pfemt.transformer import transformer_energization_metrics, transformer_scenarios
+from pfemt.workflows import build, run_transformer_scenario
 
 pytestmark = pytest.mark.powerfactory
 
@@ -112,6 +114,59 @@ def test_explicit_cable_energization_model_builds() -> None:
         assert objects["sheath_ground_sending"].on_off == 0
         assert objects["sheath_ground_receiving"].on_off == 0
         assert list(objects["cable_system_type"].bond) == [0.0]
+    finally:
+        objects.clear()
+        del app
+
+
+@pytest.mark.skipif(
+    os.environ.get("PFEMT_RUN_INTEGRATION") != "1",
+    reason="requires explicit PowerFactory integration opt-in",
+)
+def test_transformer_inrush_model_executes_nonlinear_emt(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[2]
+    config = load_yaml(root / "studies/03_transformer_energization/configs/base.yaml")
+    config["connection"]["mode"] = os.environ.get(
+        "PFEMT_INTEGRATION_MODE",
+        "external",
+    )
+    app = connect(config)
+    objects = {}
+    try:
+        objects = build(config, app)
+        first_paths = {
+            name: objects[name].GetFullName()
+            for name in ("source", "breaker", "transformer", "diagram")
+        }
+        rebuilt = build(config, app)
+        assert {
+            name: rebuilt[name].GetFullName()
+            for name in ("source", "breaker", "transformer", "diagram")
+        } == first_paths
+        assert objects["transformer_type"].itrmt == 2
+        assert objects["transformer_type"].iHyster == 0
+        assert objects["transformer_type"].ksat == 13
+        scenario = next(
+            item
+            for item in transformer_scenarios(config)
+            if item.scenario_id == "opposite_a_pow_090deg"
+        )
+        raw = run_transformer_scenario(
+            app,
+            config,
+            objects,
+            scenario,
+            tmp_path / "transformer_inrush.csv",
+        )
+        frame = read_powerfactory_csv(
+            raw,
+            config["analysis"]["column_map"],
+            config["analysis"]["decimal"],
+        )
+        metrics = transformer_energization_metrics(frame, scenario, config)
+        assert len(frame) > 1000
+        assert float(metrics["current_peak_pu"]) > 2.0
+        assert 0.5 < float(metrics["lv_voltage_peak_pu"]) < 1.5
     finally:
         objects.clear()
         del app

@@ -10,9 +10,34 @@ studies:
   - id: '03'
     slug: transformer_energization
     directory: studies/03_transformer_energization
-    stage: planned
-    result_provenance: not_executed
-    evidence: {}
+    stage: engine_verified
+    result_provenance: powerfactory_emt
+    evidence:
+      configuration:
+        - studies/03_transformer_energization/configs/base.yaml
+      scenario_generation:
+        - studies/03_transformer_energization/parameters/scenario_manifest.csv
+      analytical_checks:
+        - tests/unit/test_transformer.py
+      plotting:
+        - src/pfemt/transformer_plotting.py
+      result_parser_contract:
+        - tests/unit/test_io.py
+      builder_idempotency_tests:
+        - tests/integration/test_powerfactory_model.py
+      offline_tests:
+        - tests/unit/test_transformer.py
+      opt_in_engine_tests:
+        - tests/integration/test_powerfactory_model.py
+      executed_results:
+        - studies/03_transformer_energization/expected/powerfactory_2024_emt_sweep.csv
+        - studies/03_transformer_energization/expected/powerfactory_2024_worst_case.json
+      result_metadata:
+        - studies/03_transformer_energization/expected/run_metadata_powerfactory_2024.json
+      pfd_archives:
+        - studies/03_transformer_energization/powerfactory/PFEMT_03_Transformer_Inrush_230_34kV.pfd
+      pfd_hash_manifests:
+        - studies/03_transformer_energization/powerfactory/SHA256SUMS
 
   - id: '04'
     slug: capacitor_bank_energization

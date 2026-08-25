@@ -14,9 +14,11 @@ from pfemt.cable import cable_scenarios, export_cable_scenario_manifest
 from pfemt.config import load_yaml, validate_study_config
 from pfemt.errors import PFEMTError
 from pfemt.scenarios import export_manifest, point_on_wave_scenarios
+from pfemt.transformer import export_transformer_manifest, transformer_scenarios
 from pfemt.workflows import (
     analyse_cable_sweep,
     analyse_sweep,
+    analyse_transformer_sweep,
     archive_project,
     build,
     export_diagram,
@@ -24,6 +26,7 @@ from pfemt.workflows import (
     run_cable_sweep,
     run_point_on_wave_sweep,
     run_timestep_sensitivity,
+    run_transformer_sweep,
 )
 
 
@@ -85,12 +88,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             objects = build(config)
             print("PowerFactory model ready: {}".format(objects["project"].loc_name))
         elif arguments.command == "sweep":
-            if "cable" in config["network"]:
+            study_id = str(config["study"]["id"])
+            if study_id.startswith("transformer_energization"):
+                print(run_transformer_sweep(config))
+            elif "cable" in config["network"]:
                 print(run_cable_sweep(config))
             else:
                 print(run_point_on_wave_sweep(config))
         elif arguments.command == "analyse":
-            if "cable" in config["network"]:
+            study_id = str(config["study"]["id"])
+            if study_id.startswith("transformer_energization"):
+                print(analyse_transformer_sweep(config))
+            elif "cable" in config["network"]:
                 print(analyse_cable_sweep(config))
             else:
                 print(analyse_sweep(config))
@@ -100,7 +109,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(archive_project(config))
         elif arguments.command == "manifest":
             destination = output_directory(config) / "scenario_manifest.csv"
-            if "cable" in config["network"]:
+            study_id = str(config["study"]["id"])
+            if study_id.startswith("transformer_energization"):
+                print(export_transformer_manifest(transformer_scenarios(config), destination))
+            elif "cable" in config["network"]:
                 print(export_cable_scenario_manifest(cable_scenarios(config), destination))
             else:
                 print(export_manifest(point_on_wave_scenarios(config), destination))

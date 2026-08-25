@@ -1,0 +1,16 @@
+{
+  "campaign": "point_on_wave_by_residual_flux",
+  "completed_utc": "2026-08-25T00:03:37.554184+00:00",
+  "configuration": "C:\\Users\\VM-PF\\Documents\\06 - EMT Digsilent\\studies\\03_transformer_energization\\configs\\base.yaml",
+  "engine": "DIgSILENT PowerFactory",
+  "execution_status": "executed",
+  "platform": "Windows-10-10.0.19041-SP0",
+  "powerfactory_release": "2024 SP2",
+  "powerfactory_user": "VM-PF",
+  "project": "PFEMT_03_Transformer_Inrush_230_34kV",
+  "python_version": "3.9.0",
+  "scenario_count": 18,
+  "simulation_type": "EMT",
+  "study_case": "EMT - Transformer Inrush",
+  "study_id": "transformer_energization_230_34p5kv"
+}

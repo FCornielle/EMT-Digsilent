@@ -1,0 +1,14 @@
+parameter,value,unit,basis
+rated_power,100,MVA,declared educational benchmark
+hv_voltage,230,kV line-line,declared educational benchmark
+lv_voltage,34.5,kV line-line,declared educational benchmark
+source_short_circuit_power,10000,MVA,declared strong-grid equivalent
+short_circuit_voltage,12.5,percent,declared transformer equivalent
+copper_losses,300,kW,declared transformer equivalent
+no_load_current,0.60,percent,declared transformer equivalent
+no_load_losses,80,kW,declared transformer equivalent
+saturation_model,2,PowerFactory itrmt,polynomial EMT model
+knee_flux,1.10,pu,typical illustrative value
+air_core_reactance,0.20,pu,1.6 times leakage impedance
+saturation_exponent,13,-,PowerFactory technical-reference typical value
+integration_step,5,us,baseline EMT setting

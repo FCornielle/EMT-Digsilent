@@ -66,6 +66,48 @@ def _linked_diagrams_for(folder: Any, expected: set[str]) -> list[Any]:
     return [diagram for diagram in diagrams if expected.issubset(_graphic_objects(diagram))]
 
 
+def ensure_study_diagram(
+    app: Any,
+    grid: Any,
+    diagram_name: str,
+    expected_objects: Sequence[str],
+) -> Any:
+    """Create a linked native diagram once and preserve later manual layout work."""
+    folder = app.GetProjectFolder("dia", 1)
+    expected = set(expected_objects)
+    linked = _linked_diagrams_for(folder, expected)
+    if linked:
+        preferred = next(
+            (diagram for diagram in linked if diagram.loc_name == diagram_name),
+            linked[0],
+        )
+        return _claim_diagram_name(folder, preferred, diagram_name)
+
+    before = {item.GetFullName() for item in list(folder.GetContents("*.IntGrfnet") or [])}
+    command = app.GetFromStudyCase("ComSgllayout")
+    if command is None:
+        raise PowerFactoryExecutionError("The active Study Case has no Diagram Layout Tool")
+    set_attribute(command, "iAction", 0)
+    set_attribute(command, "pGrids", grid)
+    execute(command, "PowerFactory Diagram Layout Tool")
+    candidates = [
+        item
+        for item in list(folder.GetContents("*.IntGrfnet") or [])
+        if item.GetFullName() not in before
+    ]
+    candidates.extend(
+        diagram for diagram in _linked_diagrams_for(folder, expected) if diagram not in candidates
+    )
+    for candidate in candidates:
+        if expected.issubset(_graphic_objects(candidate)):
+            return _claim_diagram_name(folder, candidate, diagram_name)
+    raise PowerFactoryExecutionError(
+        "Diagram Layout Tool did not create the expected linked diagram {!r}".format(
+            diagram_name
+        )
+    )
+
+
 def _linked_diagrams(folder: Any) -> list[Any]:
     """Return diagrams that already represent every Study 01 object."""
     return _linked_diagrams_for(folder, set(LINE_ENERGIZATION_LAYOUT))

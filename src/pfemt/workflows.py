@@ -19,6 +19,7 @@ from pfemt.builders.cable_energization import (
     build_cable_energization_model,
 )
 from pfemt.builders.line_energization import build_line_energization_model
+from pfemt.builders.transformer_energization import build_transformer_energization_model
 from pfemt.cable import (
     CableScenario,
     cable_energization_metrics,
@@ -51,6 +52,19 @@ from pfemt.reporting import line_energization_report, write_metrics
 from pfemt.results import export_csv, register_channels, result_object
 from pfemt.scenarios import Scenario, export_manifest, point_on_wave_scenarios
 from pfemt.simulation import configure_emt, run_emt, study_commands
+from pfemt.transformer import (
+    TransformerScenario,
+    export_transformer_manifest,
+    transformer_energization_metrics,
+    transformer_scenarios,
+)
+from pfemt.transformer_plotting import (
+    plot_transformer_design_basis,
+    plot_transformer_heatmaps,
+    plot_transformer_ranking,
+    plot_transformer_sweep_summary,
+    plot_transformer_waveforms,
+)
 
 
 def output_directory(config: Mapping[str, Any]) -> Path:
@@ -64,7 +78,10 @@ def build(config: Mapping[str, Any], app: Optional[Any] = None) -> Dict[str, Any
     """Connect and dispatch to the configured study model builder."""
     validate_study_config(config)
     pf_app = app or connect(config)
-    if "cable" in config.get("network", {}):
+    study_id = str(config["study"]["id"])
+    if study_id.startswith("transformer_energization"):
+        objects = build_transformer_energization_model(pf_app, config)
+    elif "cable" in config.get("network", {}):
         objects = build_cable_energization_model(pf_app, config)
     else:
         objects = build_line_energization_model(pf_app, config)
@@ -78,7 +95,10 @@ def export_diagram(config: Mapping[str, Any], app: Optional[Any] = None) -> Path
     """Build and export the linked PowerFactory one-line diagram."""
     validate_study_config(config)
     pf_app = app or connect(config)
-    if "cable" in config.get("network", {}):
+    study_id = str(config["study"]["id"])
+    if study_id.startswith("transformer_energization"):
+        objects = build_transformer_energization_model(pf_app, config)
+    elif "cable" in config.get("network", {}):
         objects = build_cable_energization_model(pf_app, config)
     else:
         objects = build_line_energization_model(pf_app, config)
@@ -241,6 +261,10 @@ def run_cable_sweep(config: Mapping[str, Any], app: Optional[Any] = None) -> Pat
         config,
         output / "run_metadata.json",
         {
+            "engine": "DIgSILENT PowerFactory",
+            "simulation_type": "EMT",
+            "execution_status": "executed",
+            "powerfactory_release": "2024 SP2",
             "completed_utc": datetime.now(timezone.utc).isoformat(),
             "python_version": sys.version.split()[0],
             "platform": platform.platform(),
@@ -249,6 +273,106 @@ def run_cable_sweep(config: Mapping[str, Any], app: Optional[Any] = None) -> Pat
             "study_case": config["powerfactory"]["study_case"],
             "scenario_count": len(scenarios),
             "campaign": "bonding_by_point_on_wave",
+        },
+    )
+    return output
+
+
+def run_transformer_scenario(
+    app: Any,
+    config: Mapping[str, Any],
+    objects: Mapping[str, Any],
+    scenario: TransformerScenario,
+    destination: Path,
+) -> Path:
+    """Apply residual flux and point on wave, then execute one inrush case."""
+    configure_emt(objects["initial_conditions"], objects["simulation"], config)
+    register_channels(app, objects["result"], config["results"]["channels"])
+    set_attribute(objects["source"], "usetp", scenario.source_voltage_pu)
+    set_attribute(objects["breaker"], "on_off", 0)
+    set_attribute(objects["transformer"], "iResFlux", 1)
+    for attribute, value in (
+        ("PsiresA", scenario.residual_flux_a_pu),
+        ("PsiresB", scenario.residual_flux_b_pu),
+        ("PsiresC", scenario.residual_flux_c_pu),
+    ):
+        set_attribute(objects["transformer"], attribute, value)
+    closing = config["events"]["closing"]
+    configure_switch_event(
+        objects["initial_conditions"],
+        objects["breaker"],
+        closing["name"],
+        scenario.switching_time_s,
+        int(closing.get("action", 1)),
+    )
+    run_emt(objects["initial_conditions"], objects["simulation"])
+    return export_csv(app, objects["result"], destination)
+
+
+def run_transformer_sweep(config: Mapping[str, Any], app: Optional[Any] = None) -> Path:
+    """Run the complete transformer point-on-wave by residual-flux campaign."""
+    validate_study_config(config)
+    pf_app = app or connect(config)
+    objects = build_transformer_energization_model(pf_app, config)
+    output = output_directory(config)
+    scenarios = transformer_scenarios(config)
+    export_transformer_manifest(scenarios, output / "scenario_manifest.csv")
+    raw = output / "raw"
+    raw.mkdir(parents=True, exist_ok=True)
+    signature_payload = {key: value for key, value in config.items() if key != "_meta"}
+    campaign_signature = hashlib.sha256(
+        json.dumps(signature_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest().upper()
+    checkpoint_path = raw / ".campaign_state.json"
+    completed = set()
+    if checkpoint_path.is_file():
+        checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+        if checkpoint.get("configuration_sha256") == campaign_signature:
+            completed = set(checkpoint.get("completed_scenarios", []))
+    try:
+        for index, scenario in enumerate(scenarios, start=1):
+            destination = raw / "{}.csv".format(scenario.scenario_id)
+            progress = "PFEMT Study 03: case {}/{} - {}".format(
+                index, len(scenarios), scenario.scenario_id
+            )
+            if scenario.scenario_id in completed and destination.is_file():
+                print(progress + " [cached]", flush=True)
+                continue
+            print(progress, flush=True)
+            pf_app.PrintPlain(progress)
+            run_transformer_scenario(pf_app, config, objects, scenario, destination)
+            completed.add(scenario.scenario_id)
+            checkpoint = {
+                "configuration_sha256": campaign_signature,
+                "completed_scenarios": sorted(completed),
+                "updated_utc": datetime.now(timezone.utc).isoformat(),
+            }
+            temporary = checkpoint_path.with_suffix(".partial.json")
+            temporary.write_text(
+                json.dumps(checkpoint, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            temporary.replace(checkpoint_path)
+    finally:
+        set_attribute(objects["breaker"], "on_off", 0)
+        for attribute in ("PsiresA", "PsiresB", "PsiresC"):
+            set_attribute(objects["transformer"], attribute, 0.0)
+    write_run_metadata(
+        config,
+        output / "run_metadata.json",
+        {
+            "engine": "DIgSILENT PowerFactory",
+            "simulation_type": "EMT",
+            "execution_status": "executed",
+            "powerfactory_release": "2024 SP2",
+            "completed_utc": datetime.now(timezone.utc).isoformat(),
+            "python_version": sys.version.split()[0],
+            "platform": platform.platform(),
+            "powerfactory_user": pf_app.GetCurrentUser().loc_name,
+            "project": config["powerfactory"]["project"],
+            "study_case": config["powerfactory"]["study_case"],
+            "scenario_count": len(scenarios),
+            "campaign": "point_on_wave_by_residual_flux",
         },
     )
     return output
@@ -424,6 +548,86 @@ def analyse_cable_sweep(
         summary.iloc[0].to_dict(),
         output / "metrics" / "worst_case.json",
     )
+    return destination
+
+
+def analyse_transformer_csv(
+    config: Mapping[str, Any],
+    source_csv: Path,
+    scenario: TransformerScenario,
+    destination: Optional[Path] = None,
+) -> Dict[str, object]:
+    """Normalize and analyse one Study 03 PowerFactory EMT export."""
+    output = destination or output_directory(config)
+    frame = read_powerfactory_csv(
+        source_csv,
+        config["analysis"]["column_map"],
+        config["analysis"].get("decimal", "."),
+    )
+    normalized_csv = write_normalized_csv(
+        frame,
+        output / "normalized" / "{}.csv".format(scenario.scenario_id),
+    )
+    metrics = transformer_energization_metrics(frame, scenario, config)
+    row: Dict[str, object] = {
+        "scenario_id": scenario.scenario_id,
+        "switching_angle_deg": scenario.switching_angle_deg,
+        "switching_time_s": scenario.switching_time_s,
+        "residual_id": scenario.residual_id,
+        "residual_label": scenario.residual_label,
+        "residual_flux_a_pu": scenario.residual_flux_a_pu,
+        "residual_flux_b_pu": scenario.residual_flux_b_pu,
+        "residual_flux_c_pu": scenario.residual_flux_c_pu,
+        **metrics,
+    }
+    metrics_file = write_metrics(
+        row,
+        output / "metrics" / "{}.json".format(scenario.scenario_id),
+    )
+    figure = plot_transformer_waveforms(
+        frame,
+        scenario,
+        row,
+        config,
+        output / "figures" / "{}_waveforms.png".format(scenario.scenario_id),
+    )
+    return {
+        **row,
+        "normalized_csv": str(normalized_csv),
+        "metrics_file": str(metrics_file),
+        "figure": str(figure),
+    }
+
+
+def analyse_transformer_sweep(
+    config: Mapping[str, Any], directory: Optional[Path] = None
+) -> Path:
+    """Analyse and rank every transformer energization scenario."""
+    output = directory or output_directory(config)
+    rows = [
+        analyse_transformer_csv(
+            config,
+            output / "raw" / "{}.csv".format(scenario.scenario_id),
+            scenario,
+            output,
+        )
+        for scenario in transformer_scenarios(config)
+    ]
+    summary = (
+        pd.DataFrame(rows)
+        .drop(columns=["normalized_csv", "metrics_file", "figure"])
+        .sort_values("current_peak_pu", ascending=False)
+    )
+    destination = output / "sweep_summary.csv"
+    summary.to_csv(destination, index=False, float_format="%.10g")
+    plot_transformer_sweep_summary(
+        summary,
+        output / "figures" / "inrush_pow_residual_comparison.png",
+    )
+    plot_transformer_heatmaps(summary, output / "figures" / "inrush_severity_heatmaps.png")
+    plot_transformer_ranking(summary, output / "figures" / "inrush_case_ranking.png")
+    plot_transformer_design_basis(config, output / "figures" / "transformer_design_basis.png")
+    write_metrics(summary.iloc[0].to_dict(), output / "metrics" / "worst_case.json")
     return destination
 
 

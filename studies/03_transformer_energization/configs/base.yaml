@@ -1,0 +1,123 @@
+study:
+  id: transformer_energization_230_34p5kv
+  title: 230/34.5 kV transformer energization and inrush
+  owner: Fernando Cornielle
+  status: engineering_example
+
+connection:
+  mode: external
+  home:
+  username:
+  password:
+  command_line:
+
+powerfactory:
+  project: PFEMT_03_Transformer_Inrush_230_34kV
+  grid: GRID_TRANSFORMER_230_34P5KV
+  study_case: EMT - Transformer Inrush
+
+objects:
+  source: GRID_EQUIVALENT_TR
+  source_bus: BUS_SOURCE_230
+  breaker: CB_TRANSFORMER_230
+  transformer_hv_bus: BUS_TRANSFORMER_HV_230
+  transformer: TR_230_34P5KV_100MVA
+  transformer_lv_bus: BUS_TRANSFORMER_LV_34P5
+
+network:
+  frequency_hz: 50.0
+  nominal_voltage_kv: 230.0
+  source:
+    voltage_pu: 1.0
+    short_circuit_mva: 10000.0
+    r_over_x: 0.10
+    x0_over_x1: 1.0
+    r0_over_x0: 0.10
+  transformer:
+    type_name: TYP_TR_230_34P5KV_100MVA_INRUSH
+    rated_power_mva: 100.0
+    hv_voltage_kv: 230.0
+    lv_voltage_kv: 34.5
+    short_circuit_voltage_pct: 12.5
+    copper_losses_kw: 300.0
+    no_load_current_pct: 0.60
+    no_load_losses_kw: 80.0
+    vector_group_hv: YN
+    vector_group_lv: D
+    saturation:
+      model_basis: declared_piecewise_equivalent
+      model_type: polynomial
+      model_type_code: 2
+      core_limb_model: 3
+      hysteresis_model: 0
+      fit_model: 0
+      knee_current_pu: 0.006
+      knee_flux_pu: 1.10
+      air_core_reactance_pu: 0.20
+      saturation_exponent: 13
+
+sweep:
+  base_switching_time_s: 0.020
+  angles_deg: [0, 30, 60, 90, 120, 150]
+  residual_flux_cases:
+    - id: demagnetized
+      label: Demagnetized core
+      phase_pu: [0.0, 0.0, 0.0]
+    - id: adverse_a
+      label: Adverse phase-A residual flux
+      phase_pu: [0.8, -0.4, -0.4]
+    - id: opposite_a
+      label: Opposite phase-A residual flux
+      phase_pu: [-0.8, 0.4, 0.4]
+
+simulation:
+  mode: instantaneous_emt
+  mode_code: ins
+  start_s: -0.020
+  stop_s: 0.300
+  step_s: 0.000005
+  output_step_s: 0.000005
+
+events:
+  closing:
+    name: CLOSE_CB_TRANSFORMER
+    action: 1
+
+results:
+  channels:
+    - object: TR_230_34P5KV_100MVA.ElmTr2
+      variable: m:I:bushv:A
+    - object: TR_230_34P5KV_100MVA.ElmTr2
+      variable: m:I:bushv:B
+    - object: TR_230_34P5KV_100MVA.ElmTr2
+      variable: m:I:bushv:C
+    - object: BUS_TRANSFORMER_HV_230.ElmTerm
+      variable: m:U:A
+    - object: BUS_TRANSFORMER_HV_230.ElmTerm
+      variable: m:U:B
+    - object: BUS_TRANSFORMER_HV_230.ElmTerm
+      variable: m:U:C
+    - object: BUS_TRANSFORMER_LV_34P5.ElmTerm
+      variable: m:U:A
+    - object: BUS_TRANSFORMER_LV_34P5.ElmTerm
+      variable: m:U:B
+    - object: BUS_TRANSFORMER_LV_34P5.ElmTerm
+      variable: m:U:C
+
+analysis:
+  decimal: "."
+  column_map:
+    time_s: time
+    i_hv_a_ka: TR_230_34P5KV_100MVA.ElmTr2 | Phase Current A
+    i_hv_b_ka: TR_230_34P5KV_100MVA.ElmTr2 | Phase Current B
+    i_hv_c_ka: TR_230_34P5KV_100MVA.ElmTr2 | Phase Current C
+    v_hv_a_kv: BUS_TRANSFORMER_HV_230.ElmTerm | Phase Voltage A
+    v_hv_b_kv: BUS_TRANSFORMER_HV_230.ElmTerm | Phase Voltage B
+    v_hv_c_kv: BUS_TRANSFORMER_HV_230.ElmTerm | Phase Voltage C
+    v_lv_a_kv: BUS_TRANSFORMER_LV_34P5.ElmTerm | Phase Voltage A
+    v_lv_b_kv: BUS_TRANSFORMER_LV_34P5.ElmTerm | Phase Voltage B
+    v_lv_c_kv: BUS_TRANSFORMER_LV_34P5.ElmTerm | Phase Voltage C
+
+outputs:
+  directory: ../outputs
+  project_archive: ../powerfactory/PFEMT_03_Transformer_Inrush_230_34kV.pfd
