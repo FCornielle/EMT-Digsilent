@@ -1,0 +1,125 @@
+study:
+  id: lightning_travelling_waves_230kv
+  title: Native lightning impulse and travelling waves on a 230 kV line
+  owner: Fernando Cornielle
+  status: engineering_example
+
+connection:
+  mode: external
+  home:
+  username:
+  password:
+  command_line:
+
+powerfactory:
+  project: PFEMT_08_Lightning_Waves_230kV
+  grid: GRID_LIGHTNING_230KV
+  study_case: EMT - Lightning Waves
+
+diagram:
+  name: EMT Lightning Waves 230 kV
+
+objects:
+  impulse: LIGHTNING_PHASE_A
+  strike_bus: BUS_STRIKE_230
+  line_section_1: LINE_STRIKE_TO_MID_50KM
+  midpoint_bus: BUS_MIDPOINT_230
+  line_section_2: LINE_MID_TO_REMOTE_50KM
+  remote_bus: BUS_REMOTE_230
+  termination: MATCHED_TERMINATION_285OHM
+  reference_bus: BUS_REFERENCE_230
+  reference: ZERO_VOLTAGE_REFERENCE
+
+network:
+  nominal_voltage_kv: 230.0
+  frequency_hz: 50.0
+  line:
+    type_name: TYP_OHL_230KV_LIGHTNING
+    section_length_km: 50.0
+    rated_current_ka: 1.20
+    frequency_dependent_model: 1
+    main_transient_frequency_hz: 200000.0
+    fit_frequency_min_hz: 10.0
+    fit_frequency_max_hz: 2000000.0
+    sequence_parameters:
+      r1_ohm_per_km: 0.028
+      x1_ohm_per_km: 0.310
+      b1_us_per_km: 3.80
+      r0_ohm_per_km: 0.230
+      x0_ohm_per_km: 0.980
+      b0_us_per_km: 2.10
+  termination:
+    Sn: 100.0
+    r_pu: 0.540
+    x_pu: 0.0001
+    r0_pu: 0.540
+    x0_pu: 0.0001
+  reference:
+    voltage_pu: 1.0
+    short_circuit_mva: 100000.0
+    r_over_x: 0.10
+
+sweep:
+  waveforms:
+    - id: iec_lpl_i_200ka
+      label: IEC 62305-1 LPL I native waveform
+      waveform_code: 0
+      peak_current_ka: 200.0
+      correction_factor: 0.93
+      front_time_us: 19.0
+      tail_time_us: 485.0
+      steepness_factor: 10
+      maximum_steepness_ka_per_us: 165.0
+    - id: heidler_30ka_fast
+      label: Heidler 30 kA fast-front waveform
+      waveform_code: 1
+      peak_current_ka: 30.0
+      correction_factor: 0.9553518
+      front_time_us: 1.2
+      tail_time_us: 50.0
+      steepness_factor: 10
+      maximum_steepness_ka_per_us: 0.0
+    - id: cigre_31ka_first_stroke
+      label: CIGRE 31 kA first-stroke parameterization
+      waveform_code: 3
+      peak_current_ka: 31.0
+      correction_factor: 1.0
+      front_time_us: 3.83
+      tail_time_us: 77.5
+      steepness_factor: 10
+      maximum_steepness_ka_per_us: 24.3
+
+simulation:
+  mode: instantaneous_emt
+  mode_code: ins
+  network_representation_code: rst
+  start_s: -0.000100
+  stop_s: 0.001200
+  step_s: 0.0000001
+  output_step_s: 0.0000001
+
+events:
+  trigger:
+    name: TRIGGER_LIGHTNING
+    time_s: 0.0
+
+results:
+  channels:
+    - {object: LINE_STRIKE_TO_MID_50KM.ElmLne, variable: "m:I:bus1:A"}
+    - {object: BUS_STRIKE_230.ElmTerm, variable: "m:U:A"}
+    - {object: BUS_MIDPOINT_230.ElmTerm, variable: "m:U:A"}
+    - {object: BUS_REMOTE_230.ElmTerm, variable: "m:U:A"}
+
+analysis:
+  decimal: "."
+  arrival_threshold_fraction: 0.05
+  column_map:
+    time_s: time
+    i_injected_a_ka: LINE_STRIKE_TO_MID_50KM.ElmLne | Phase Current A
+    v_strike_a_kv: BUS_STRIKE_230.ElmTerm | Phase Voltage A
+    v_mid_a_kv: BUS_MIDPOINT_230.ElmTerm | Phase Voltage A
+    v_remote_a_kv: BUS_REMOTE_230.ElmTerm | Phase Voltage A
+
+outputs:
+  directory: ../outputs
+  project_archive: ../powerfactory/PFEMT_08_Lightning_Waves_230kV.pfd

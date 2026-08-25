@@ -126,6 +126,20 @@ studies:
   - id: '08'
     slug: lightning_travelling_waves
     directory: studies/08_lightning_travelling_waves
-    stage: planned
-    result_provenance: not_executed
-    evidence: {}
+    stage: engine_verified
+    result_provenance: powerfactory_emt
+    evidence:
+      configuration: [studies/08_lightning_travelling_waves/configs/base.yaml]
+      scenario_generation: [studies/08_lightning_travelling_waves/parameters/scenario_manifest.csv]
+      analytical_checks: [tests/unit/test_lightning.py]
+      plotting: [src/pfemt/lightning_plotting.py]
+      result_parser_contract: [tests/unit/test_io.py]
+      builder_idempotency_tests: [tests/integration/test_powerfactory_model.py]
+      offline_tests: [tests/unit/test_lightning.py]
+      opt_in_engine_tests: [tests/integration/test_powerfactory_model.py]
+      executed_results:
+        - studies/08_lightning_travelling_waves/expected/powerfactory_2024_emt_sweep.csv
+        - studies/08_lightning_travelling_waves/expected/powerfactory_2024_worst_case.json
+      result_metadata: [studies/08_lightning_travelling_waves/expected/run_metadata_powerfactory_2024.json]
+      pfd_archives: [studies/08_lightning_travelling_waves/powerfactory/PFEMT_08_Lightning_Waves_230kV.pfd]
+      pfd_hash_manifests: [studies/08_lightning_travelling_waves/powerfactory/SHA256SUMS]

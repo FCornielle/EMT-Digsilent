@@ -66,3 +66,21 @@ def configure_short_circuit_event(
     set_attribute(event, "i_p2psc", int(phase_selector), required=False)
     set_attribute(event, "i_p2pgf", int(phase_selector), required=False)
     return event
+
+
+def configure_parameter_event(
+    initial_conditions: Any,
+    target: Any,
+    name: str,
+    time_s: float,
+    variable: str,
+    value: str,
+) -> Any:
+    """Create/update a parameter event for an unconnected scalar model input."""
+    folder = event_folder(initial_conditions)
+    event = create_or_get(folder, "EvtParam", name)
+    set_attribute(event, "time", float(time_s))
+    set_attribute(event, "p_target", target)
+    set_attribute(event, "variable", variable)
+    set_attribute(event, "value", value)
+    return event

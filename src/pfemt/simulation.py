@@ -27,6 +27,12 @@ def configure_emt(
     """Configure EMT mode, time interval and fixed/output time steps."""
     sim = config["simulation"]
     set_attribute(initial_conditions, "iopt_sim", sim.get("mode_code", "ins"))
+    if "network_representation_code" in sim:
+        set_attribute(
+            initial_conditions,
+            "iopt_net",
+            sim["network_representation_code"],
+        )
     set_attribute(initial_conditions, "tstart", float(sim["start_s"]))
     set_attribute(initial_conditions, "dtemt", float(sim["step_s"]))
     set_attribute(
@@ -41,4 +47,3 @@ def run_emt(initial_conditions: Any, simulation: Any) -> None:
     """Calculate EMT initial conditions and execute the time-domain simulation."""
     execute(initial_conditions, "EMT initial conditions")
     execute(simulation, "EMT simulation")
-

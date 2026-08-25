@@ -1,0 +1,16 @@
+{
+  "campaign": "native_impulse_waveform_and_distributed_line_propagation",
+  "completed_utc": "2026-08-25T01:07:43.262186+00:00",
+  "configuration": "C:\\Users\\VM-PF\\Documents\\06 - EMT Digsilent\\studies\\08_lightning_travelling_waves\\configs\\base.yaml",
+  "engine": "DIgSILENT PowerFactory",
+  "execution_status": "executed",
+  "platform": "Windows-10-10.0.19041-SP0",
+  "powerfactory_release": "2024 SP2",
+  "powerfactory_user": "VM-PF",
+  "project": "PFEMT_08_Lightning_Waves_230kV",
+  "python_version": "3.9.0",
+  "scenario_count": 3,
+  "simulation_type": "EMT",
+  "study_case": "EMT - Lightning Waves",
+  "study_id": "lightning_travelling_waves_230kv"
+}

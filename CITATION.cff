@@ -7,11 +7,9 @@ authors:
     given-names: "Fernando"
 version: 0.1.0
 date-released: 2026-07-28
-license: MIT
 keywords:
   - EMT
   - PowerFactory
   - power systems
   - transient studies
   - Python
-

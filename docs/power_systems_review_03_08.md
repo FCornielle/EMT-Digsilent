@@ -253,9 +253,10 @@ Official references: [DIgSILENT SLG EMT example](https://www.digsilent.de/en/faq
   and insulator model; converge arrival, peak, flashover and energy.
 - **Acceptance limitations:** Acceptance needs IEC coordination levels and
   equipment-specific transformer, arrester and insulator data. Deterministic
-  flashover does not establish outage rate. DIgSILENT states that `ElmImpulse`
-  does not provide the CIGRE waveform; that campaign needs reviewed `ElmIac` plus
-  DSL. Constant footing resistance is not a broadband soil model.
+  flashover does not establish outage rate. PowerFactory 2024 `ElmImpulse`
+  provides IEC 62305-1, Heidler, double-exponential, and CIGRE families; each
+  still needs traceable project parameters. Constant footing resistance is not
+  a broadband soil model.
 - **API versus native review:** The API can configure sources, line sections,
   sweeps and distance-time processing after schema verification. Native review
   is mandatory for geometry/order, shielding/grounding, strike node, line-fit
@@ -282,8 +283,9 @@ Official references: [DIgSILENT lightning source](https://www.digsilent.de/index
    capacitances and short-line geometry; no pass/fail claim is possible.
 4. Study 07 needs frozen sequence/grounding equivalents, physical fault
    locations and clearing sequence.
-5. Study 08 lacks geometry, grounding, stroke, insulator, arrester and withstand
-   data. Select simple `ElmImpulse` or CIGRE-form DSL before implementation.
-6. All exact PowerFactory 2024 attributes, event options and instantaneous result
-   identifiers need a small engine-backed schema/integration test before a full
-   campaign.
+5. The Study 08 propagation baseline is implemented, but geometry, grounding,
+   shield wires, insulator, arrester and withstand data remain mandatory before
+   an equipment-specific insulation or outage-rate conclusion.
+6. PowerFactory 2024 attributes, event options and instantaneous result
+   identifiers used by Studies 03–08 have engine-backed tests; new equipment
+   variants require the same version-specific preflight before a full campaign.

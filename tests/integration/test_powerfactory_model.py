@@ -17,11 +17,13 @@ from pfemt.config import load_yaml
 from pfemt.diagram import CABLE_GENERATED_LAYER_NAME
 from pfemt.faults import fault_metrics, fault_scenarios, trv_metrics
 from pfemt.io import read_powerfactory_csv
+from pfemt.lightning import lightning_metrics, lightning_scenarios
 from pfemt.transformer import transformer_energization_metrics, transformer_scenarios
 from pfemt.workflows import (
     build,
     run_capacitor_scenario,
     run_fault_scenario,
+    run_lightning_scenario,
     run_transformer_scenario,
 )
 
@@ -292,6 +294,46 @@ def test_fault_network_executes_slg_and_three_phase_signatures(tmp_path: Path) -
             & (three_frame["time_s"] <= three_phase.fault_time_s + 0.02)
         ]
         assert active_three[["i_a_ka", "i_b_ka", "i_c_ka"]].abs().max().min() > 1.0
+    finally:
+        objects.clear()
+        del app
+
+
+@pytest.mark.skipif(
+    os.environ.get("PFEMT_RUN_INTEGRATION") != "1",
+    reason="requires explicit PowerFactory integration opt-in",
+)
+def test_lightning_impulse_executes_distributed_travelling_wave(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[2]
+    config = load_yaml(root / "studies/08_lightning_travelling_waves/configs/base.yaml")
+    config["connection"]["mode"] = os.environ.get("PFEMT_INTEGRATION_MODE", "external")
+    app = connect(config)
+    objects = {}
+    try:
+        objects = build(config, app)
+        first_paths = {
+            name: objects[name].GetFullName()
+            for name in ("impulse", "line_section_1", "line_section_2", "diagram")
+        }
+        rebuilt = build(config, app)
+        assert {
+            name: rebuilt[name].GetFullName()
+            for name in ("impulse", "line_section_1", "line_section_2", "diagram")
+        } == first_paths
+        assert objects["load_flow"].iopt_net == 1
+        assert objects["initial_conditions"].iopt_net == "rst"
+        scenario = lightning_scenarios(config)[1]
+        raw = run_lightning_scenario(
+            app, config, objects, scenario, tmp_path / "lightning.csv"
+        )
+        frame = read_powerfactory_csv(
+            raw, config["analysis"]["column_map"], config["analysis"]["decimal"]
+        )
+        metrics = lightning_metrics(frame, scenario, config)
+        assert len(frame) > 10000
+        assert float(metrics["line_current_peak_ka"]) > 20.0
+        assert float(metrics["remote_voltage_peak_kv"]) > 1000.0
+        assert abs(float(metrics["arrival_error_percent"])) < 2.0
     finally:
         objects.clear()
         del app

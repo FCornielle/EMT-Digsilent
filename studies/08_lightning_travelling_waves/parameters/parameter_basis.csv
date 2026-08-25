@@ -1,0 +1,11 @@
+parameter,value,unit,basis
+nominal_voltage,230,kV line-line,declared energized reference
+total_line_length,100,km,two distributed 50 km sections
+surge_impedance,285.620,ohm,derived from positive-sequence L and C
+wave_velocity,289452,km/s,derived from positive-sequence L and C
+end_to_end_travel_time,345.480,microsecond,derived from positive-sequence L and C
+termination_resistance,285.66,ohm,0.54 pu on 230 kV and 100 MVA
+line_fit_band,10 to 2000000,Hz,declared EMT fitting band
+main_transient_frequency,200000,Hz,declared line-fit reference
+integration_step,0.1,microsecond,executed EMT baseline
+observation_distances,0;50;100,km,retained phase-A bus channels

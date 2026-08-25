@@ -22,6 +22,13 @@ All notable changes are documented in this file. The project follows
   core/sheath circuits, native diagram layout, and internal PowerFactory scripts.
 - PowerFactory 2024 integration read-back and fit fingerprints that avoid
   recalculating unchanged frequency-dependent cable parameters.
+- Compact four-role delivery architecture with explicit Power Systems PhD and
+  QA review gates.
+- Engine-verified Studies 03–08, including transformer inrush, capacitor
+  switching, magnetic sensitivity, breaker TRV, variable-clearing faults, and
+  native lightning travelling waves.
+- Restorable PFD archives, compact executed-result evidence, SHA-256 manifests,
+  and educational figures for every engine-verified Study 03–08 case.
 
 ### Changed
 

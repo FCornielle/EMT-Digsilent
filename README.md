@@ -25,12 +25,12 @@ The repository distinguishes four maturity levels:
 |---:|---|---|---|
 | 01 | [230 kV line energization and point on wave](studies/01_line_energization/README.md) | open-end peak voltage | **Verified baseline** |
 | 02 | [220 kV cable energization and sheath bonding](studies/02_hv_cable_energization/README.md) | core/screen voltage and current | **Verified baseline** |
-| 03 | [Transformer energization and inrush](studies/03_transformer_energization/README.md) | inrush, flux, harmonics | Planned |
-| 04 | [Capacitor-bank energization](studies/04_capacitor_bank_energization/README.md) | inrush peak/frequency and duty | Planned |
-| 05 | [Transformer saturation sensitivity](studies/05_transformer_saturation_sensitivity/README.md) | residual-flux/inrush envelope | Planned |
-| 06 | [Circuit-breaker TRV](studies/06_circuit_breaker_trv/README.md) | peak TRV and RRRV | Planned |
-| 07 | [Faults with variable clearing](studies/07_faults_variable_clearing/README.md) | peak current, DC offset, I²t | Planned |
-| 08 | [Lightning and travelling waves](studies/08_lightning_travelling_waves/README.md) | insulation stress and arrester energy | Planned |
+| 03 | [Transformer energization and inrush](studies/03_transformer_energization/README.md) | inrush, flux, harmonics | **Engine verified** |
+| 04 | [Capacitor-bank energization](studies/04_capacitor_bank_energization/README.md) | inrush peak/frequency and duty | **Engine verified** |
+| 05 | [Transformer saturation sensitivity](studies/05_transformer_saturation_sensitivity/README.md) | residual-flux/inrush envelope | **Engine verified** |
+| 06 | [Circuit-breaker TRV](studies/06_circuit_breaker_trv/README.md) | peak TRV and RRRV | **Engine verified** |
+| 07 | [Faults with variable clearing](studies/07_faults_variable_clearing/README.md) | peak current, first-cycle RMS, I²t | **Engine verified** |
+| 08 | [Lightning and travelling waves](studies/08_lightning_travelling_waves/README.md) | impulse stress and propagation time | **Engine verified** |
 | 09 | [Detailed grid-following/grid-forming IBR](studies/09_detailed_ibr_models/README.md) | control/current-limit response | Planned |
 | 10 | [Instantaneous protection](studies/10_instantaneous_protection/README.md) | pickup, trip, selectivity | Planned |
 | 11 | [Parametric sweeps and Monte Carlo](studies/11_parametric_monte_carlo/README.md) | ranked risk distribution | Foundation implemented |
@@ -39,6 +39,27 @@ The repository distinguishes four maturity levels:
 All cases follow the same
 [15-step engineering methodology](docs/case_methodology.md) and
 [README review contract](docs/study_readme_template.md).
+
+## Engine-verified Studies 03–08
+
+| Study | Executed matrix | Governing retained result |
+|---|---:|---|
+| 03 transformer inrush | 18 cases | 1.717 kA / 6.841 pu peak HV current |
+| 04 capacitor switching | 12 cases | 23.116 kA back-to-back inrush; 6.50 kHz ringing |
+| 05 magnetic sensitivity | 9 cases | 8.388 pu peak current for the low air-core-reactance variant |
+| 06 breaker TRV | 3 cases | 388.84 kV peak contact TRV; 0.239 kV/µs maximum average RRRV |
+| 07 variable fault clearing | 9 cases | 3.816 kA peak and 0.999 kA²s for the 3F/120 ms case |
+| 08 lightning waves | 3 cases | 345.0 µs measured 100 km transit versus 345.48 µs analytical |
+
+Each linked study README contains its generated PowerFactory model description,
+ordered methodology, parameter basis, several executed-result figures with
+interpretation immediately below each image, compact CSV/JSON evidence, limits,
+references, and a restorable PFD with a SHA-256 manifest.
+
+Delivery uses four compact review roles: Lead Automation Engineer, Power Systems
+PhD Reviewer, QA/Test Engineer, and Documentation/Release Steward. Their gates
+and hand-offs are defined in
+[`docs/multiagent_architecture.md`](docs/multiagent_architecture.md).
 
 ## Study 01 — verified 230 kV line energization
 
@@ -218,7 +239,7 @@ cross-bonding is required before evaluating local joint or SVL duty.
 ### Install
 
 ```powershell
-cd "C:\Users\VM-PF\Documents\06 - EMT DIgSILENT"
+cd "C:\Users\VM-PF\Documents\06 - EMT Digsilent"
 py -3.9 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip

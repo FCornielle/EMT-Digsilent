@@ -20,6 +20,7 @@ from pfemt.builders.cable_energization import (
 )
 from pfemt.builders.capacitor_energization import build_capacitor_energization_model
 from pfemt.builders.fault_network import build_fault_network_model
+from pfemt.builders.lightning_waves import build_lightning_wave_model
 from pfemt.builders.line_energization import build_line_energization_model
 from pfemt.builders.transformer_energization import build_transformer_energization_model
 from pfemt.cable import (
@@ -44,7 +45,11 @@ from pfemt.capacitor_plotting import (
 from pfemt.config import load_yaml, resolve_from_config, validate_study_config
 from pfemt.diagram import export_powerfactory_diagram
 from pfemt.errors import ResultFormatError
-from pfemt.events import configure_short_circuit_event, configure_switch_event
+from pfemt.events import (
+    configure_parameter_event,
+    configure_short_circuit_event,
+    configure_switch_event,
+)
 from pfemt.fault_plotting import plot_fault_summary, plot_fault_waveforms, plot_trv_waveforms
 from pfemt.faults import (
     FaultScenario,
@@ -54,6 +59,17 @@ from pfemt.faults import (
     trv_metrics,
 )
 from pfemt.io import read_powerfactory_csv, write_normalized_csv
+from pfemt.lightning import (
+    LightningScenario,
+    export_lightning_manifest,
+    lightning_metrics,
+    lightning_scenarios,
+)
+from pfemt.lightning_plotting import (
+    plot_distance_time_map,
+    plot_lightning_summary,
+    plot_lightning_waveforms,
+)
 from pfemt.metrics import (
     compare_sweep_to_baseline,
     line_energization_derived_quantities,
@@ -105,7 +121,9 @@ def build(config: Mapping[str, Any], app: Optional[Any] = None) -> Dict[str, Any
     validate_study_config(config)
     pf_app = app or connect(config)
     study_id = str(config["study"]["id"])
-    if study_id.startswith(("circuit_breaker_trv", "faults_variable_clearing")):
+    if study_id.startswith("lightning_travelling_waves"):
+        objects = build_lightning_wave_model(pf_app, config)
+    elif study_id.startswith(("circuit_breaker_trv", "faults_variable_clearing")):
         objects = build_fault_network_model(pf_app, config)
     elif study_id.startswith("transformer_saturation_sensitivity"):
         objects = build_transformer_energization_model(pf_app, config)
@@ -128,7 +146,9 @@ def export_diagram(config: Mapping[str, Any], app: Optional[Any] = None) -> Path
     validate_study_config(config)
     pf_app = app or connect(config)
     study_id = str(config["study"]["id"])
-    if study_id.startswith(("circuit_breaker_trv", "faults_variable_clearing")):
+    if study_id.startswith("lightning_travelling_waves"):
+        objects = build_lightning_wave_model(pf_app, config)
+    elif study_id.startswith(("circuit_breaker_trv", "faults_variable_clearing")):
         objects = build_fault_network_model(pf_app, config)
     elif study_id.startswith("transformer_saturation_sensitivity"):
         objects = build_transformer_energization_model(pf_app, config)
@@ -517,6 +537,93 @@ def run_fault_sweep(config: Mapping[str, Any], app: Optional[Any] = None) -> Pat
                 if study_number == "06"
                 else "fault_type_by_three_pole_breaker_clearing_time"
             ),
+        },
+    )
+    return output
+
+
+def run_lightning_scenario(
+    app: Any,
+    config: Mapping[str, Any],
+    objects: Mapping[str, Any],
+    scenario: LightningScenario,
+    destination: Path,
+) -> Path:
+    """Apply one native ElmImpulse parameter set and execute EMT."""
+    configure_emt(objects["initial_conditions"], objects["simulation"], config)
+    register_channels(app, objects["result"], config["results"]["channels"])
+    values = [
+        ("waveform", scenario.waveform_code),
+        ("I0", scenario.peak_current_ka),
+        ("tau1", scenario.front_time_us),
+        ("tau2", scenario.tail_time_us),
+    ]
+    if scenario.waveform_code in (0, 1):
+        values.extend(
+            [
+                ("k", scenario.correction_factor),
+                ("n", scenario.steepness_factor),
+            ]
+        )
+    elif scenario.waveform_code == 2:
+        values.append(("k", scenario.correction_factor))
+    elif scenario.waveform_code == 3:
+        values.append(("Sm", scenario.maximum_steepness_ka_per_us))
+    for attribute, value in values:
+        set_attribute(objects["impulse"], attribute, value)
+    trigger = config["events"]["trigger"]
+    configure_parameter_event(
+        objects["initial_conditions"],
+        objects["impulse"],
+        trigger["name"],
+        float(trigger["time_s"]),
+        "trigger",
+        "1",
+    )
+    run_emt(objects["initial_conditions"], objects["simulation"])
+    return export_csv(app, objects["result"], destination)
+
+
+def run_lightning_sweep(config: Mapping[str, Any], app: Optional[Any] = None) -> Path:
+    """Execute every Study 08 native lightning waveform."""
+    validate_study_config(config)
+    pf_app = app or connect(config)
+    objects = build_lightning_wave_model(pf_app, config)
+    output = output_directory(config)
+    scenarios = lightning_scenarios(config)
+    export_lightning_manifest(scenarios, output / "scenario_manifest.csv")
+    raw = output / "raw"
+    raw.mkdir(parents=True, exist_ok=True)
+    for index, scenario in enumerate(scenarios, start=1):
+        print(
+            "PFEMT Study 08: case {}/{} - {}".format(
+                index, len(scenarios), scenario.scenario_id
+            ),
+            flush=True,
+        )
+        run_lightning_scenario(
+            pf_app,
+            config,
+            objects,
+            scenario,
+            raw / "{}.csv".format(scenario.scenario_id),
+        )
+    write_run_metadata(
+        config,
+        output / "run_metadata.json",
+        {
+            "engine": "DIgSILENT PowerFactory",
+            "simulation_type": "EMT",
+            "execution_status": "executed",
+            "powerfactory_release": "2024 SP2",
+            "completed_utc": datetime.now(timezone.utc).isoformat(),
+            "python_version": sys.version.split()[0],
+            "platform": platform.platform(),
+            "powerfactory_user": pf_app.GetCurrentUser().loc_name,
+            "project": config["powerfactory"]["project"],
+            "study_case": config["powerfactory"]["study_case"],
+            "scenario_count": len(scenarios),
+            "campaign": "native_impulse_waveform_and_distributed_line_propagation",
         },
     )
     return output
@@ -1024,6 +1131,58 @@ def analyse_fault_sweep(
             "breaker_trv_comparison.png" if is_trv else "fault_clearing_comparison.png"
         ),
         trv=is_trv,
+    )
+    write_metrics(summary.iloc[0].to_dict(), output / "metrics" / "worst_case.json")
+    return destination
+
+
+def analyse_lightning_sweep(
+    config: Mapping[str, Any], directory: Optional[Path] = None
+) -> Path:
+    """Analyse and rank Study 08 source and travelling-wave duties."""
+    output = directory or output_directory(config)
+    rows = []
+    frames: Dict[str, pd.DataFrame] = {}
+    for scenario in lightning_scenarios(config):
+        frame = read_powerfactory_csv(
+            output / "raw" / "{}.csv".format(scenario.scenario_id),
+            config["analysis"]["column_map"],
+            config["analysis"].get("decimal", "."),
+        )
+        frames[scenario.scenario_id] = frame
+        write_normalized_csv(
+            frame, output / "normalized" / "{}.csv".format(scenario.scenario_id)
+        )
+        metrics = lightning_metrics(frame, scenario, config)
+        row: Dict[str, object] = {
+            "scenario_id": scenario.scenario_id,
+            "label": scenario.label,
+            "waveform_code": scenario.waveform_code,
+            "front_time_us": scenario.front_time_us,
+            "tail_time_us": scenario.tail_time_us,
+            **metrics,
+        }
+        rows.append(row)
+        write_metrics(row, output / "metrics" / "{}.json".format(scenario.scenario_id))
+        plot_lightning_waveforms(
+            frame,
+            scenario,
+            row,
+            output / "figures" / "{}_waveforms.png".format(scenario.scenario_id),
+        )
+    summary = pd.DataFrame(rows).sort_values("remote_voltage_peak_kv", ascending=False)
+    destination = output / "sweep_summary.csv"
+    summary.to_csv(destination, index=False, float_format="%.10g")
+    plot_lightning_summary(summary, output / "figures" / "lightning_wave_comparison.png")
+    governing = next(
+        item
+        for item in lightning_scenarios(config)
+        if item.scenario_id == str(summary.iloc[0]["scenario_id"])
+    )
+    plot_distance_time_map(
+        frames[governing.scenario_id],
+        governing,
+        output / "figures" / "governing_distance_time_map.png",
     )
     write_metrics(summary.iloc[0].to_dict(), output / "metrics" / "worst_case.json")
     return destination

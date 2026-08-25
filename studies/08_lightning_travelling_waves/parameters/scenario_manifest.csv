@@ -1,0 +1,4 @@
+scenario_id,label,waveform_code,peak_current_ka,correction_factor,front_time_us,tail_time_us,steepness_factor,maximum_steepness_ka_per_us
+iec_lpl_i_200ka,IEC 62305-1 LPL I native waveform,0,200.0,0.93,19.0,485.0,10,165.0
+heidler_30ka_fast,Heidler 30 kA fast-front waveform,1,30.0,0.9553518,1.2,50.0,10,0.0
+cigre_31ka_first_stroke,CIGRE 31 kA first-stroke parameterization,3,31.0,1.0,3.83,77.5,10,24.3
